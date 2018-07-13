@@ -566,6 +566,9 @@ start_process_systemd(){
 
 	systemctl start v2ray
 	judge "V2ray 启动"
+	
+	/etc/init.d/cron restart
+	judge "cron 启动"
 }
 
 #展示客户端配置信息
