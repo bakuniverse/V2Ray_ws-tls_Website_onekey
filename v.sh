@@ -266,8 +266,8 @@ modify_crontab(){
 	#crontab -l >> crontab.txt
 	echo "20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log" >> crontab.txt
 	echo "12 0 * * * /etc/init.d/nginx stop" >> crontab.txt
-	echo "15 1 * * * /etc/init.d/nginx start" >> crontab.txt
-	echo "10 1 * * * /sbin/reboot" >> crontab.txt
+	echo "15 1 * * * /etc/init.d/nginx restart" >> crontab.txt
+	echo "20 1 * * * /sbin/reboot" >> crontab.txt
 	crontab crontab.txt
 	sleep 2
 	if [[ "${ID}" == "centos" ]];then
