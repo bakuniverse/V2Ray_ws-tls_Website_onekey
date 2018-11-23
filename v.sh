@@ -335,9 +335,11 @@ web_install(){
 v2ray_conf_add(){
 	cat>${v2ray_conf_dir}/config.json<<EOF
 {
-  "inbounds": {
+  "inbounds": [
+  {
 	"port": 10000,
 	"listen":"127.0.0.1",
+	"tag": "vmess-in", 
 	"protocol": "vmess",
 	"settings": {
 	  "clients": [
@@ -356,11 +358,13 @@ v2ray_conf_add(){
 	  }
 	  }
 	}
-  },
-  "outbound": {
+  ],
+  "outbounds": [
+  {
 	"protocol": "freedom",
 	"settings": {}
   }
+  ]
 }
 EOF
 
@@ -408,7 +412,8 @@ user_config_add(){
 	touch ${v2ray_conf_dir}/user.json
 	cat>${v2ray_conf_dir}/user.json<<EOF
 {
-	"outbounds": {
+	"outbounds": [
+	{
 		"streamSettings": {
 			"network": "ws",
 			"kcpSettings": null,
@@ -445,7 +450,7 @@ user_config_add(){
 		"loglevel": "info",
 		"error": ""
 	},
-	"outboundDetour": [{
+	"outboundDetour": {
 			"tag": "direct",
 			"protocol": "freedom",
 			"settings": {
@@ -462,18 +467,16 @@ user_config_add(){
 			}
 		}
 	],
-	"inbounds": {
-		"streamSettings": null,
+	"inbounds": [
+	{
 		"settings": {
-			"ip": "127.0.0.1",
-			"udp": true,
-			"clients": null,
 			"auth": "noauth"
 		},
 		"protocol": "socks",
 		"port": 1080,
-		"listen": "0.0.0.0"
-	},
+		"domainOverride": ["tls","http"],
+	}
+	],
 	"inboundDetour": null,
 	"routing": {
 		"settings": {
