@@ -333,13 +333,12 @@ web_install(){
 
 #生成v2ray配置文件
 v2ray_conf_add(){
-	cat>${v2ray_conf_dir}/config.json<<EOF
+        touch ${v2ray_conf_dir}/config.json
+	cat <<EOF > ${v2ray_conf_dir}/config.json
 {
-  "inbounds": [
-  {
+  "inbound": {
 	"port": 10000,
 	"listen":"127.0.0.1",
-	"tag": "vmess-in", 
 	"protocol": "vmess",
 	"settings": {
 	  "clients": [
@@ -358,13 +357,11 @@ v2ray_conf_add(){
 	  }
 	  }
 	}
-  ],
-  "outbounds": [
-  {
+  },
+  "outbound": {
 	"protocol": "freedom",
 	"settings": {}
   }
-  ]
 }
 EOF
 
@@ -410,47 +407,47 @@ judge "Nginx 配置"
 #生成客户端json文件
 user_config_add(){
 	touch ${v2ray_conf_dir}/user.json
-	cat>${v2ray_conf_dir}/user.json<<EOF
+	cat <<EOF > ${v2ray_conf_dir}/user.json
 {
-	"outbounds": [
-	{
-		"streamSettings": {
-			"network": "ws",
-			"kcpSettings": null,
-			"wsSettings": {
-				"headers": {
-					"host": "SETPATH"
-				},
-				"path": "/"
-			},
-			"tcpSettings": null,
-			"tlsSettings": {},
-			"security": "tls"
-		},
-		"tag": "agentout",
-		"protocol": "vmess",
-		"mux": {
-			"enabled": true,
-			"concurrency": 8
-		},
-		"settings": {
-			"vnext": [{
-				"users": [{
-					"alterId": SETAID,
-					"security": "aes-128-gcm",
-					"id": "SETID"
-				}],
-				"port": SETPORT,
-				"address": "SETDOMAIN"
-			}]
-		}
-	},
 	"log": {
 		"access": "",
 		"loglevel": "info",
 		"error": ""
 	},
-	"outboundDetour": {
+	"outbound": {
+		"tag": "agentout",
+		"protocol": "vmess",
+		"mux": {
+			"enabled": true,
+			"concurrency": 6
+		},
+		"streamSettings": {
+			"network": "ws",
+			"security": "tls",
+			"wsSettings": {
+				"path": "/",
+				"headers": {
+					"host": "SETPATH"
+				}
+			}
+		},
+		"settings": {
+			"vnext": [
+				{
+					"port": SETPORT,
+					"address": "SETDOMAIN",
+					"users": [
+						{
+							"alterId": SETAID,
+							"id": "SETID"
+						}
+					]
+				}
+			]
+		}
+	},
+	"outboundDetour": [
+		{
 			"tag": "direct",
 			"protocol": "freedom",
 			"settings": {
@@ -467,41 +464,53 @@ user_config_add(){
 			}
 		}
 	],
-	"inbounds": [
-	{
+	"inbound": {
+		"port": 1087,
+		"listen": "127.0.0.1",
+		"protocol": "http",
 		"settings": {
-			"auth": "noauth"
-		},
-		"protocol": "socks",
-		"port": 1080,
-		"domainOverride": ["tls","http"],
-	}
+			"timeout": 360
+		}
+	},
+	"inboundDetour": [
+		{
+			"port": 1080,
+			"listen": "127.0.0.1",
+			"protocol": "socks",
+			"settings": {
+				"auth": "noauth",
+				"timeout": 360,
+				"udp": true
+			}
+		}
 	],
-	"inboundDetour": null,
 	"routing": {
+		"strategy": "rules",
 		"settings": {
-			"rules": [{
-					"ip": [
-						"0.0.0.0/8",
-						"10.0.0.0/8",
-						"100.64.0.0/10",
-						"127.0.0.0/8",
-						"169.254.0.0/16",
-						"172.16.0.0/12",
-						"192.0.0.0/24",
-						"192.0.2.0/24",
-						"192.168.0.0/16",
-						"198.18.0.0/15",
-						"198.51.100.0/24",
-						"203.0.113.0/24",
-						"::1/128",
-						"fc00::/7",
-						"fe80::/10"
-					],
-					"domain": null,
+			"domainStrategy": "IPIfNonMatch",
+			"rules": [
+				{
 					"type": "field",
-					"port": null,
-					"outboundTag": "direct"
+					"outboundTag": "agentout",
+					"ip": [
+						"8.8.8.8",
+						"1.1.1.1"
+					]
+				},
+				{
+					"type": "field",
+					"outboundTag": "direct",
+					"ip": [
+						"119.29.29.29",
+						"114.114.114.114"
+					]
+				},
+				{
+					"type": "field",
+					"outboundTag": "direct",
+					"ip": [
+						"geoip:private"
+					]
 				},
 				{
 					"type": "chinasites",
@@ -510,17 +519,23 @@ user_config_add(){
 				{
 					"type": "chinaip",
 					"outboundTag": "direct"
+				},
+				{
+					"type": "field",
+					"outboundTag": "direct",
+					"domain": [
+						"geosite:cn"
+					]
+				},
+				{
+					"type": "field",
+					"outboundTag": "direct",
+					"ip": [
+						"geoip:cn"
+					]
 				}
-			],
-			"domainStrategy": "IPIfNonMatch"
-		},
-		"strategy": "rules"
-	},
-	"dns": {
-		"servers": [
-			"8.8.8.8",
-			"8.8.4.4"
-		]
+			]
+		}
 	}
 }
 EOF
