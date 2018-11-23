@@ -357,7 +357,7 @@ v2ray_conf_add(){
 	  }
 	}
   },
-  "outbounds": {
+  "outbound": {
 	"protocol": "freedom",
 	"settings": {}
   }
