@@ -335,7 +335,7 @@ web_install(){
 v2ray_conf_add(){
 	cat>${v2ray_conf_dir}/config.json<<EOF
 {
-  "inbound": {
+  "inbounds": {
 	"port": 10000,
 	"listen":"127.0.0.1",
 	"protocol": "vmess",
@@ -357,7 +357,7 @@ v2ray_conf_add(){
 	  }
 	}
   },
-  "outbound": {
+  "outbounds": {
 	"protocol": "freedom",
 	"settings": {}
   }
@@ -408,7 +408,7 @@ user_config_add(){
 	touch ${v2ray_conf_dir}/user.json
 	cat>${v2ray_conf_dir}/user.json<<EOF
 {
-	"outbound": {
+	"outbounds": {
 		"streamSettings": {
 			"network": "ws",
 			"kcpSettings": null,
@@ -462,7 +462,7 @@ user_config_add(){
 			}
 		}
 	],
-	"inbound": {
+	"inbounds": {
 		"streamSettings": null,
 		"settings": {
 			"ip": "127.0.0.1",
