@@ -5,7 +5,7 @@
  systemctl stop nginx	
   ```
    ```
-  "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh"	 ### 2018-12-10
+  "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh"
    ```
  修复证书无法正常自动更新的bug
  
