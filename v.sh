@@ -444,7 +444,11 @@ user_config_add(){
 					]
 				}
 			]
-		}
+		},
+		"mux": {
+                        "enabled": true,
+                         "concurrency": 8
+        }	
 	},
 	"outboundDetour": [
 		{
@@ -470,16 +474,21 @@ user_config_add(){
 		"protocol": "http",
 		"settings": {
 			"timeout": 360
-		}
+		},
+	  "sniffing": {
+                "enable": true,
+                "destOverride": ["http", "tls"]
+    }
 	},
 	"inboundDetour": [
 		{
 			"port": 1080,
 			"listen": "127.0.0.1",
 			"protocol": "socks",
+			"tag": "socks-inbound",
 			"settings": {
 				"auth": "noauth",
-				"timeout": 360,
+				ip": "127.0.0.1",
 				"udp": true
 			}
 		}
