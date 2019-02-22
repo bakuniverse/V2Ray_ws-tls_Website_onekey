@@ -265,8 +265,6 @@ modify_crontab(){
 	sleep 2
 	#crontab -l >> crontab.txt
 	echo "20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart" >> crontab.txt
-	echo "12 0 * * * /etc/init.d/nginx stop" >> crontab.txt
-	echo "15 1 * * * /etc/init.d/nginx restart" >> crontab.txt
 	echo "20 1 * * * /sbin/reboot" >> crontab.txt
 	crontab crontab.txt
 	sleep 2
@@ -599,6 +597,7 @@ start_process_systemd(){
 	/etc/init.d/cron restart
 	judge "cron 启动"
 }
+#acme 更新配置
 acme_cron_update(){
     if [[ "${ID}" == "centos" ]];then
         sed -i "/acme.sh/c 0 0 * * 0 systemctl stop nginx && \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
