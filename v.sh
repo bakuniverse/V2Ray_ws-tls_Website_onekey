@@ -324,7 +324,7 @@ web_install(){
 	echo -e "${OK} ${GreenBG} 安装Website伪装站点 ${Font}"
 	sleep 2
 	mkdir /www
-	wget https://github.com/dylanbai8/V2Ray_ws-tls_Website_onekey/raw/master/V2rayWebsite.tar.gz
+	wget https://github.com/bakuniverse/V2Ray_ws-tls_Website_onekey/raw/master/V2rayWebsite.tar.gz
 	tar -zxvf V2rayWebsite.tar.gz -C /www
 	rm -f V2rayWebsite.tar.gz
 }
