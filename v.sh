@@ -443,11 +443,7 @@ user_config_add(){
 					]
 				}
 			]
-		},
-		"mux": {
-                        "enabled": true,
-                         "concurrency": 8
-        }	
+		}	
 	},
 	"outboundDetour": [
 		{
