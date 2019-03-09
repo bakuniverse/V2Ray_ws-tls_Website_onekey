@@ -475,8 +475,8 @@ user_config_add(){
 			"timeout": 360
 		},
 	  "sniffing": {
-                "enable": true,
-                "destOverride": ["http", "tls"]
+              "enable": true,
+              "destOverride": ["http", "tls"]
     }
 	},
 	"inboundDetour": [
@@ -487,7 +487,7 @@ user_config_add(){
 			"tag": "socks-inbound",
 			"settings": {
 				"auth": "noauth",
-				ip": "127.0.0.1",
+				"ip": "127.0.0.1",
 				"udp": true
 			}
 		}
