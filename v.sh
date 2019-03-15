@@ -266,6 +266,7 @@ modify_crontab(){
 	#crontab -l >> crontab.txt
 	echo "20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart" >> crontab.txt
 	echo "20 1 * * * /sbin/reboot" >> crontab.txt
+	echo "0 */3 * * 0 systemctl restart nginx" >> crontab.txt	
 	echo "30 14 * * * /sbin/reboot" >> crontab.txt
 	crontab crontab.txt
 	sleep 2
@@ -660,6 +661,7 @@ main_sslon(){
 	rinetdbbr_install
 	show_information
 	start_process_systemd
+	acme_cron_update
 }
 
 main_ssloff(){
