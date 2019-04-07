@@ -28,10 +28,6 @@ v2ray_conf="${v2ray_conf_dir}/config.json"
 v2ray_user="${v2ray_conf_dir}/user.json"
 nginx_conf="${nginx_conf_dir}/v2ray.conf"
 
-#生成伪装路径
-camouflage=`cat /dev/urandom | head -n 10 | md5sum | head -c 8`
-hostheader=`cat /dev/urandom | head -n 10 | md5sum | head -c 8`
-
 source /etc/os-release
 
 #脚本欢迎语
@@ -40,6 +36,15 @@ v2ray_hello(){
 	echo ""
 	echo -e "${Info} ${GreenBG} 你正在执行 V2RAY 基于 NGINX 的 VMESS+WS+TLS+Website(Use Host)+Rinetd BBR 一键安装脚本 ${Font}"
 	echo ""
+	random_number
+}
+
+#生成 转发端口 UUID 随机路径 伪装域名
+random_number(){
+	let PORT=$RANDOM+10000
+	UUID=$(cat /proc/sys/kernel/random/uuid)
+	camouflage=`cat /dev/urandom | head -n 10 | md5sum | head -c 8`
+	hostheader=`cat /dev/urandom | head -n 10 | md5sum | head -c 8`
 }
 
 #检测root权限
@@ -53,40 +58,60 @@ is_root(){
 	fi
 }
 
-#从VERSION中提取发行版系统的英文名称，为了在debian/ubuntu下添加相对应的Nginx apt源
-VERSION=`echo ${VERSION} | awk -F "[()]" '{print $2}'`
+
 
 #检测系统版本并添加源
 check_system(){
-	
+	#从VERSION中提取发行版系统的英文名称，为了在debian/ubuntu下添加相对应的Nginx apt源
+        VERSION=`echo ${VERSION} | awk -F "[()]" '{print $2}'`
 	if [[ "${ID}" == "centos" && ${VERSION_ID} -ge 7 ]];then
 		echo -e "${OK} ${GreenBG} 当前系统为 Centos ${VERSION_ID} ${VERSION} ${Font} "
 		INS="yum"
 		echo -e "${OK} ${GreenBG} SElinux 设置中，请耐心等待，不要进行其他操作${Font} "
-		setsebool -P httpd_can_network_connect 1
+		setsebool -P httpd_can_network_connect 1 >/dev/null 2>&1
 		echo -e "${OK} ${GreenBG} SElinux 设置完成 ${Font} "
-		## Centos 也可以通过添加 epel 仓库来安装，目前不做改动
-		## 已改为 epel 安装
-		yum -y install epel-release
-		echo -e "${OK} ${GreenBG} epel 源 安装完成 ${Font}"
+		## 添加 Nginx apt源
+		touch /etc/yum.repos.d/nginx.repo
+		cat <<EOF > /etc/yum.repos.d/nginx.repo
+[nginx]
+name=nginx repo
+baseurl=http://nginx.org/packages/mainline/centos/7/\$basearch/
+gpgcheck=0
+enabled=1
+EOF
+		echo -e "${OK} ${GreenBG} 添加 Nginx yum源 成功 ${Font}"
 	elif [[ "${ID}" == "debian" && ${VERSION_ID} -ge 8 ]];then
-		echo -e "${OK} ${GreenBG} 当前系统为 Debian ${VERSION_ID} ${VERSION} ${Font} "
+		echo -e "${OK} ${GreenBG} 当前系统为 Debian ${VERSION_ID} ${VERSION} ${Font}"
 		INS="apt"
 		## 添加 Nginx apt源
-		echo "deb http://nginx.org/packages/debian/ ${VERSION} nginx" >> /etc/apt/sources.list
-		echo "deb-src http://nginx.org/packages/debian/ ${VERSION} nginx" >> /etc/apt/sources.list
-		wget -nc https://nginx.org/keys/nginx_signing.key
-		apt-key add nginx_signing.key
+		if [[ -e /etc/apt/sources.bak ]]; then
+		echo -e "${OK} ${GreenBG} Nginx apt源 已添加 ${Font}"
+		else
+		cp -rp /etc/apt/sources.list /etc/apt/sources.bak
+		echo "deb http://nginx.org/packages/mainline/debian/ ${VERSION} nginx" >> /etc/apt/sources.list
+		echo "deb-src http://nginx.org/packages/mainline/debian/ ${VERSION} nginx" >> /etc/apt/sources.list
+		wget -N --no-check-certificate https://nginx.org/keys/nginx_signing.key >/dev/null 2>&1
+		apt-key add nginx_signing.key >/dev/null 2>&1
+		rm -rf add nginx_signing.key >/dev/null 2>&1
+		echo -e "${OK} ${GreenBG} 添加 Nginx apt源 成功 ${Font}"
+		fi
 	elif [[ "${ID}" == "ubuntu" && `echo "${VERSION_ID}" | cut -d '.' -f1` -ge 16 ]];then
-		echo -e "${OK} ${GreenBG} 当前系统为 Ubuntu ${VERSION_ID} ${VERSION} ${Font} "
+		echo -e "${OK} ${GreenBG} 当前系统为 Ubuntu ${VERSION_ID} ${VERSION_CODENAME} ${Font}"
 		INS="apt"
 		## 添加 Nginx apt源
-		echo "deb http://nginx.org/packages/debian/ ${VERSION} nginx" >> /etc/apt/sources.list
-		echo "deb-src http://nginx.org/packages/debian/ ${VERSION} nginx" >> /etc/apt/sources.list
-		wget -nc https://nginx.org/keys/nginx_signing.key
-		apt-key add nginx_signing.key
+		if [[ -e /etc/apt/sources.bak ]]; then
+		echo -e "${OK} ${GreenBG} Nginx apt源 已添加 ${Font}"
+		else
+		cp -rp /etc/apt/sources.list /etc/apt/sources.bak
+		echo "deb http://nginx.org/packages/mainline/ubuntu/ ${VERSION_CODENAME} nginx" >> /etc/apt/sources.list
+		echo "deb-src http://nginx.org/packages/mainline/ubuntu/ ${VERSION_CODENAME} nginx" >> /etc/apt/sources.list
+		wget -N --no-check-certificate https://nginx.org/keys/nginx_signing.key >/dev/null 2>&1
+		apt-key add nginx_signing.key >/dev/null 2>&1
+		rm -rf add nginx_signing.key >/dev/null 2>&1
+		echo -e "${OK} ${GreenBG} 添加 Nginx apt源 成功 ${Font}"
+		fi
 	else
-		echo -e "${Error} ${RedBG} 当前系统为 ${ID} ${VERSION_ID} 不在支持的系统列表内，安装中断 ${Font} "
+		echo -e "${Error} ${RedBG} 当前系统为 ${ID} ${VERSION_ID} 不在支持的系统列表内，安装中断 ${Font}"
 		exit 1
 	fi
 
@@ -113,55 +138,67 @@ port_alterid_set(){
 	echo -e "${Info} ${GreenBG} 【配置 3/3 】请输入alterID（默认:64 无特殊需求请直接按回车键） ${Font}"
 	stty erase '^H' && read -p "请输入：" alterID
 	[[ -z ${alterID} ]] && alterID="64"
+	echo -e "----------------------------------------------------------"
+	echo -e "${Info} ${GreenBG} 你输入的配置信息为 域名：${domain} 端口：${port} alterID：${alterID} ${Font}"
+	echo -e "----------------------------------------------------------"
 }
 
 #强制清除可能残余的http服务 v2ray服务 关闭防火墙 更新源
 apache_uninstall(){
+	echo -e "${OK} ${GreenBG} 正在强制清理可能残余的http服务 ${Font}"
 	if [[ "${ID}" == "centos" ]];then
 
-	systemctl disable httpd
-	systemctl stop httpd
-	yum erase httpd httpd-tools apr apr-util -y
+	systemctl disable httpd >/dev/null 2>&1
+	systemctl stop httpd >/dev/null 2>&1
+	yum erase httpd httpd-tools apr apr-util -y >/dev/null 2>&1
 
-	systemctl disable nginx
-	systemctl stop nginx
-	yum erase nginx -y
+	systemctl disable firewalld >/dev/null 2>&1
+	systemctl stop firewalld >/dev/null 2>&1
 
-	systemctl disable v2ray
-	systemctl stop v2ray
-	killall -9 v2ray
-
-	systemctl disable firewalld
-	systemctl stop firewalld
+	echo -e "${OK} ${GreenBG} 正在更新源 请稍后 …… ${Font}"
 
 	yum -y update
-	
-	rm -rf /www
 
 	else
 
-	systemctl disable apache2
-	systemctl stop apache2
-	apt purge apache2 -y
+	systemctl disable apache2 >/dev/null 2>&1
+	systemctl stop apache2 >/dev/null 2>&1
+	apt purge apache2 -y >/dev/null 2>&1
 
-	systemctl disable nginx
-	systemctl stop nginx
-	apt purge nginx -y
-
-	systemctl disable v2ray
-	systemctl stop v2ray
-	killall -9 v2ray
+	echo -e "${OK} ${GreenBG} 正在更新源 请稍后 …… ${Font}"
 
 	apt -y update
-	
-	rm -rf /www
 
 	fi
+
+	systemctl disable nginx >/dev/null 2>&1
+	systemctl stop nginx >/dev/null 2>&1
+	apt purge nginx -y >/dev/null 2>&1
+
+	systemctl disable v2ray >/dev/null 2>&1
+	systemctl stop v2ray >/dev/null 2>&1
+	killall -9 v2ray >/dev/null 2>&1
+
+	systemctl disable rinetd-bbr >/dev/null 2>&1
+	systemctl stop rinetd-bbr >/dev/null 2>&1
+	killall -9 rinetd-bbr >/dev/null 2>&1
+
+	rm -rf /www >/dev/null 2>&1
+	rm -rf /etc/nginx/conf.d/v2ray.conf >/dev/null 2>&1
+	rm -rf /etc/systemd/system/v2ray.service /etc/v2ray/config.json /etc/v2ray/user.json >/dev/null 2>&1
+	rm -rf /usr/bin/rinetd-bbr /etc/rinetd-bbr.conf /etc/systemd/system/rinetd-bbr.service >/dev/null 2>&1
 }
 
 #安装各种依赖工具
 dependency_install(){
-	${INS} install wget curl lsof -y
+	for CMD in iptables grep cut xargs systemctl ip awk
+	do
+		if ! type -p ${CMD}; then
+			echo -e "${Error} ${RedBG} 缺少必要依赖 脚本终止安装 ${Font}"
+			exit 1
+		fi
+	done
+	${INS} install curl lsof unzip zip -y
 
 	if [[ "${ID}" == "centos" ]];then
 		${INS} -y install crontabs
@@ -172,9 +209,6 @@ dependency_install(){
 
 	${INS} install bc -y
 	judge "安装 bc"
-
-	${INS} install unzip -y
-	judge "安装 unzip"
 }
 
 #检测域名解析是否正确
@@ -265,7 +299,7 @@ modify_crontab(){
 	sleep 2
 	#crontab -l >> crontab.txt
 	echo "20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart" >> crontab.txt
-	echo "37 */7 * * * root /sbin/reboot" >> crontab.txt
+	echo "37 */7 * * * /sbin/reboot" >> crontab.txt
 	echo "29 */3 * * * systemctl restart nginx" >> crontab.txt
 	crontab crontab.txt
 	sleep 2
@@ -411,9 +445,9 @@ nginx_conf_add(){
 		}
 	}
 	server {
-		SETPORT80;
+		listen 80;
 		server_name serveraddr.com;
-		SETREWRITE;
+		return 301 https://serveraddr.com;
 	}
 EOF
 
@@ -431,6 +465,14 @@ user_config_add(){
 		"access": "",
 		"loglevel": "info",
 		"error": ""
+	},
+	"dns": {
+		"servers": [
+			"8.8.8.8",
+			"1.1.1.1",
+			"119.29.29.29",
+			"114.114.114.114"
+		]
 	},
 	"outbound": {
 		"tag": "agentout",
@@ -676,7 +718,6 @@ main_sslon(){
 	v2ray_conf_add
 	nginx_conf_add
 	user_config_add
-	rinetdbbr_install
 	show_information
 	start_process_systemd
 	acme_cron_update
@@ -701,7 +742,6 @@ main_ssloff(){
 	v2ray_conf_add
 	nginx_conf_add
 	user_config_add
-	rinetdbbr_install
 	show_information
 	start_process_systemd
 	acme_cron_update
