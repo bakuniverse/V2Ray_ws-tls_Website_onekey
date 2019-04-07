@@ -9,9 +9,8 @@
 #====================================================
 
 #定义文字颜色
-Green="\033[32m" 
-Red="\033[31m" 
-Yellow="\033[33m"
+Green="\033[32m"
+Red="\033[31m"
 GreenBG="\033[42;37m"
 RedBG="\033[41;37m"
 Font="\033[0m"
@@ -32,7 +31,6 @@ source /etc/os-release
 
 #脚本欢迎语
 v2ray_hello(){
-	clear
 	echo ""
 	echo -e "${Info} ${GreenBG} 你正在执行 V2RAY 基于 NGINX 的 VMESS+WS+TLS+Website(Use Host)+Rinetd BBR 一键安装脚本 ${Font}"
 	echo ""
@@ -50,7 +48,7 @@ random_number(){
 #检测root权限
 is_root(){
 	if [ `id -u` == 0 ]
-		then echo -e "${OK} ${GreenBG} 当前用户是root用户，开始安装流程 ${Font} "
+		then echo -e "${OK} ${GreenBG} 当前用户是root用户，开始安装流程 ${Font}"
 		sleep 3
 	else
 		echo -e "${Error} ${RedBG} 当前用户不是root用户，请切换到root用户后重新执行脚本 ${Font}"
@@ -58,18 +56,15 @@ is_root(){
 	fi
 }
 
-
-
 #检测系统版本并添加源
 check_system(){
-	#从VERSION中提取发行版系统的英文名称，为了在debian/ubuntu下添加相对应的Nginx apt源
-        VERSION=`echo ${VERSION} | awk -F "[()]" '{print $2}'`
+	VERSION=`echo ${VERSION} | awk -F "[()]" '{print $2}'`
 	if [[ "${ID}" == "centos" && ${VERSION_ID} -ge 7 ]];then
-		echo -e "${OK} ${GreenBG} 当前系统为 Centos ${VERSION_ID} ${VERSION} ${Font} "
+		echo -e "${OK} ${GreenBG} 当前系统为 Centos ${VERSION_ID} ${VERSION} ${Font}"
 		INS="yum"
-		echo -e "${OK} ${GreenBG} SElinux 设置中，请耐心等待，不要进行其他操作${Font} "
+		echo -e "${OK} ${GreenBG} SElinux 设置中，请耐心等待，不要进行其他操作${Font}"
 		setsebool -P httpd_can_network_connect 1 >/dev/null 2>&1
-		echo -e "${OK} ${GreenBG} SElinux 设置完成 ${Font} "
+		echo -e "${OK} ${GreenBG} SElinux 设置完成 ${Font}"
 		## 添加 Nginx apt源
 		touch /etc/yum.repos.d/nginx.repo
 		cat <<EOF > /etc/yum.repos.d/nginx.repo
@@ -114,7 +109,6 @@ EOF
 		echo -e "${Error} ${RedBG} 当前系统为 ${ID} ${VERSION_ID} 不在支持的系统列表内，安装中断 ${Font}"
 		exit 1
 	fi
-
 }
 
 #检测安装完成或失败
@@ -280,9 +274,7 @@ v2ray_install(){
 	fi
 
 	mkdir -p /root/v2ray && cd /root/v2ray
-	wget  --no-check-certificate https://install.direct/go.sh
-
-	## wget http://install.direct/go.sh
+	wget -N --no-check-certificate https://install.direct/go.sh
 	
 	if [[ -f go.sh ]];then
 		bash go.sh --force
@@ -299,7 +291,7 @@ modify_crontab(){
 	sleep 2
 	#crontab -l >> crontab.txt
 	echo "20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart" >> crontab.txt
-	echo "37 */7 * * * /sbin/reboot" >> crontab.txt
+	echo "30 12 * * * /sbin/reboot" >> crontab.txt
 	echo "29 */3 * * * systemctl restart nginx" >> crontab.txt
 	crontab crontab.txt
 	sleep 2
@@ -321,7 +313,7 @@ ssl_install(){
 	judge "安装 SSL 证书生成脚本依赖"
 
 	curl  https://get.acme.sh | sh
-	judge "安装 SSL 证书生成脚本"
+	judge "安装 SSL 证书生成脚本 添加证书自动续签任务"
 
 }
 
@@ -359,34 +351,34 @@ web_install(){
 	echo -e "${OK} ${GreenBG} 安装Website伪装站点 ${Font}"
 	sleep 2
 	mkdir /www
-	wget https://github.com/bakuniverse/V2Ray_ws-tls_Website_onekey/raw/master/V2rayWebsite.tar.gz
+	wget https://github.com/dylanbai8/V2Ray_ws-tls_Website_onekey/raw/master/V2rayWebsite.tar.gz
 	tar -zxvf V2rayWebsite.tar.gz -C /www
 	rm -f V2rayWebsite.tar.gz
 }
 
 #生成v2ray配置文件
 v2ray_conf_add(){
-        touch ${v2ray_conf_dir}/config.json
+	touch ${v2ray_conf_dir}/config.json
 	cat <<EOF > ${v2ray_conf_dir}/config.json
 {
   "inbound": {
-	"port": 10000,
-	"listen":"127.0.0.1",
+	"port": SETPORTV,
+	"listen": "127.0.0.1",
 	"protocol": "vmess",
 	"settings": {
 	  "clients": [
 		{
-		  "id": "UserUUID",
-		  "alterId": 64
+		  "id": "SETUUID",
+		  "alterId": SETALTERID
 		}
 	  ]
 	},
-	"streamSettings":{
-	  "network":"ws",
+	"streamSettings": {
+	  "network": "ws",
 	  "wsSettings": {
 	  "path": "/",
 	  "headers": {
-	  "Host": "www.PathHeader.com"
+	  "Host": "www.SETHEADER.com"
 	  }
 	  }
 	}
@@ -405,12 +397,13 @@ judge "V2ray 配置"
 #生成nginx配置文件
 nginx_conf_add(){
 	touch ${nginx_conf_dir}/v2ray.conf
-	cat>${nginx_conf_dir}/v2ray.conf<<EOF
+	cat <<EOF > ${nginx_conf_dir}/v2ray.conf
 	server {
-		listen 443 ssl http2 fastopen=3 reuseport;
+		listen SETPORT443 ssl http2;
+		server_name			SETSERVER.COM;
 		ssl_certificate		/etc/v2ray/v2ray.crt;
 		ssl_certificate_key	/etc/v2ray/v2ray.key;
-		ssl_protocols		TLSv1.1 TLSv1.2 TLSv1.3;
+		ssl_protocols		TLSv1 TLSv1.1 TLSv1.2 TLSv1.3;
 		ssl_prefer_server_ciphers on;
 		ssl_ciphers		ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS;
 		ssl_stapling on;  #开启OCSP Stapling
@@ -430,8 +423,6 @@ nginx_conf_add(){
                 add_header X-XSS-Protection "1; mode=block" always;
                 #防止MIME探测
                 add_header X-Content-Type-Options nosniff;
-		server_name			serveraddr.com;
-		
 		root		/www;
 		location / {
 		proxy_redirect off;
@@ -439,15 +430,15 @@ nginx_conf_add(){
 		proxy_set_header Upgrade \$http_upgrade;
 		proxy_set_header Connection "upgrade";
 		proxy_set_header Host \$http_host;
-		if (\$http_host = "www.PathHeader.com" ) {
-		proxy_pass http://127.0.0.1:10000;
+		if (\$http_host = "www.SETHEADER.com" ) {
+		proxy_pass http://127.0.0.1:SETPORTV;
 		}
 		}
 	}
 	server {
 		listen 80;
-		server_name serveraddr.com;
-		return 301 https://serveraddr.com;
+		server_name SETSERVER.COM;
+		return 301 https://SETSERVER.COM:SETPORT443;
 	}
 EOF
 
@@ -462,8 +453,8 @@ user_config_add(){
 	cat <<EOF > ${v2ray_conf_dir}/user.json
 {
 	"log": {
-		"access": "",
 		"loglevel": "info",
+		"access": "",
 		"error": ""
 	},
 	"dns": {
@@ -474,6 +465,31 @@ user_config_add(){
 			"114.114.114.114"
 		]
 	},
+	"inbound": {
+		"port": 1087,
+		"listen": "127.0.0.1",
+		"protocol": "http",
+		"settings": {
+			"timeout": 360
+		},
+	"sniffing": {
+              "enable": true,
+              "destOverride": ["http", "tls"]
+    }		
+	},	
+	"inboundDetour": [
+		{
+			"port": 1080,
+			"listen": "127.0.0.1",
+			"protocol": "socks",
+			"tag": "socks-inbound",
+			"settings": {
+				"auth": "noauth",
+				"ip": "127.0.0.1",
+				"udp": true
+			}
+		}
+	],
 	"outbound": {
 		"tag": "agentout",
 		"protocol": "vmess",
@@ -487,24 +503,24 @@ user_config_add(){
 			"wsSettings": {
 				"path": "/",
 				"headers": {
-					"host": "SETPATH"
+					"host": "SETHEADER"
 				}
 			}
 		},
 		"settings": {
 			"vnext": [
 				{
-					"port": SETPORT,
-					"address": "SETDOMAIN",
+					"port": SETPORT443,
+					"address": "SETSERVER",
 					"users": [
 						{
-							"alterId": SETAID,
-							"id": "SETID"
+							"alterId": SETALTERID,
+							"id": "SETUUID"
 						}
 					]
 				}
 			]
-		}	
+		}
 	},
 	"outboundDetour": [
 		{
@@ -521,31 +537,6 @@ user_config_add(){
 				"response": {
 					"type": "http"
 				}
-			}
-		}
-	],
-	"inbound": {
-		"port": 1087,
-		"listen": "127.0.0.1",
-		"protocol": "http",
-		"settings": {
-			"timeout": 360
-		},
-	  "sniffing": {
-              "enable": true,
-              "destOverride": ["http", "tls"]
-    }
-	},
-	"inboundDetour": [
-		{
-			"port": 1080,
-			"listen": "127.0.0.1",
-			"protocol": "socks",
-			"tag": "socks-inbound",
-			"settings": {
-				"auth": "noauth",
-				"ip": "127.0.0.1",
-				"udp": true
 			}
 		}
 	],
@@ -617,35 +608,34 @@ judge "客户端json配置"
 
 #修正v2ray配置文件
 modify_port_UUID(){
-	let PORT=$RANDOM+10000
-	UUID=$(cat /proc/sys/kernel/random/uuid)
-	sed -i "/\"port\"/c  \	\"port\":${PORT}," ${v2ray_conf}
-	sed -i "/\"id\"/c \\\t  \"id\":\"${UUID}\"," ${v2ray_conf}
-	sed -i "/\"alterId\"/c \\\t  \"alterId\":${alterID}" ${v2ray_conf}
-	sed -i "s/PathHeader/${hostheader}/g" "${v2ray_conf}"
+	sed -i "s/SETPORTV/${PORT}/g" "${v2ray_conf}"
+	sed -i "s/SETUUID/${UUID}/g" "${v2ray_conf}"
+	sed -i "s/SETALTERID/${alterID}/g" "${v2ray_conf}"
+	sed -i "s/SETHEADER/${hostheader}/g" "${v2ray_conf}"
 }
 
 #修正nginx配置配置文件
 modify_nginx(){
-	sed -i "1,/listen/{s/listen 443 ssl;/listen ${port} ssl;/}" ${nginx_conf}
-	sed -i "/server_name/c \\\tserver_name ${domain};" ${nginx_conf}
-	sed -i "/proxy_pass/c \\\tproxy_pass http://127.0.0.1:${PORT};" ${nginx_conf}
-	sed -i "s/PathHeader/${hostheader}/g" "${nginx_conf}"
-	sed -i "s/SETPORT80/listen 80/g" "${nginx_conf}"
-	sed -i "s/SETREWRITE/rewrite ^ https:\/\/${domain}:${port}\$request_uri? permanent/g" "${nginx_conf}"
+	sed -i "s/SETPORT443/${port}/g" "${nginx_conf}"
+	sed -i "s/SETPORTV/${PORT}/g" "${nginx_conf}"
+	sed -i "s/SETSERVER.COM/${domain}/g" "${nginx_conf}"
+	sed -i "s/SETHEADER/${hostheader}/g" "${nginx_conf}"
 }
 
 #修正客户端json配置文件
 modify_userjson(){
-	sed -i "s/SETDOMAIN/${domain}/g" "${v2ray_user}"
-	sed -i "s/SETPORT/${port}/g" "${v2ray_user}"
-	sed -i "s/SETID/${UUID}/g" "${v2ray_user}"
-	sed -i "s/SETAID/${alterID}/g" "${v2ray_user}"
-	sed -i "s/SETPATH/www.${hostheader}.com/g" "${v2ray_user}"
+	sed -i "s/SETSERVER/${domain}/g" "${v2ray_user}"
+	sed -i "s/SETPORT443/${port}/g" "${v2ray_user}"
+	sed -i "s/SETUUID/${UUID}/g" "${v2ray_user}"
+	sed -i "s/SETALTERID/${alterID}/g" "${v2ray_user}"
+	sed -i "s/SETHEADER/www.${hostheader}.com/g" "${v2ray_user}"
 }
 
 #重启nginx和v2ray程序 加载配置
 start_process_systemd(){
+	systemctl enable v2ray >/dev/null 2>&1
+	systemctl enable nginx >/dev/null 2>&1
+
 	systemctl restart nginx
 	judge "Nginx 启动"
 
@@ -671,28 +661,30 @@ acme_cron_update(){
 show_information(){
 	clear
 	echo ""
-	echo -e "${Info} ${GreenBG} V2RAY 基于 NGINX 的 VMESS+WS+TLS+Website(Use Host)+Rinetd BBR 安装成功 ${Font} "
+	echo -e "${Info} ${GreenBG} V2RAY 基于 NGINX 的 VMESS+WS+TLS+Website(Use Host)+Rinetd BBR 安装成功 ${Font}"
 	echo -e "----------------------------------------------------------"
-	echo -e "${Green} 【您的 V2ray 配置信息】 ${Font} "
-	echo -e "${Green} 地址（address）：${Font} ${domain} "
-	echo -e "${Green} 端口（port）：${Font} ${port} "
-	echo -e "${Green} 用户id（UUID）：${Font} ${UUID} "
-	echo -e "${Green} 额外id（alterId）：${Font} ${alterID} "
-	echo -e "${Green} 加密方式（security）：${Font} 自适应 或 auto "
-	echo -e "${Green} 传输协议（network）：${Font} 选 ws 或 websocket "
+	echo -e "${Green} 【您的 V2ray 配置信息】 ${Font}"
+	echo -e "${Green} 地址（address）：${Font} ${domain}"
+	echo -e "${Green} 端口（port）：${Font} ${port}"
+	echo -e "${Green} 用户id（UUID）：${Font} ${UUID}"
+	echo -e "${Green} 额外id（alterId）：${Font} ${alterID}"
+	echo -e "${Green} 加密方式（security）：${Font} 自适应（建议 none）"
+	echo -e "${Green} 传输协议（network）：${Font} 选 ws 或 websocket"
 	echo -e "${Green} 伪装类型（type）：${Font} none "
-	echo -e "${Green} WS 路径（Path）（WebSocket 路径）：${Font} / "
-	echo -e "${Green} WS Host（Host）：${Font} www.${hostheader}.com "
-	echo -e "${Green} 伪装域名（适用于 v2rayNG）：${Font} /;www.${hostheader}.com "
-	echo -e "${Green} HTTP头（适用于 BifrostV）：${Font} 字段名：host 值：www.${hostheader}.com "
-	echo -e "${Green} Mux 多路复用：${Font} 自适应 "
-	echo -e "${Green} 底层传输安全：${Font} tls "
+	echo -e "${Green} WS 路径（ws  path）（Path）（WebSocket 路径）：${Font} / "
+	echo -e "${Green} WS Host（伪装域名）（Host）：${Font} www.${hostheader}.com"
+	echo -e "${Green} 伪装域名（适用于 旧版v2rayNG）：${Font} /;www.${hostheader}.com"
+	echo -e "${Green} HTTP头（适用于 BifrostV）：${Font} 字段名：host 值：www.${hostheader}.com"
+	echo -e "${Green} Mux 多路复用：${Font} 自适应"
+	echo -e "${Green} 底层传输安全（加密方式）：${Font} tls"
 	if [ "${port}" -eq "443" ];then
-	echo -e "${Green} Website 伪装站点：${Font} https://${domain} "
-	echo -e "${Green} 客户端配置文件下载地址（URL）：${Font} https://${domain}/s/${camouflage}/config.json ${Green} 【推荐】 ${Font} "
+	echo -e "${Green} Website 伪装站点：${Font} https://${domain}"
+	echo -e "${Green} 客户端配置文件下载地址（URL）：${Font} https://${domain}/s/${camouflage}/config.json ${Green} 【推荐】 ${Font}"
+	echo -e "${Green} Windows 客户端（已打包 config 即下即用） ：${Font} https://${domain}/s/${camouflage}/V2rayPro.zip ${Green} 【推荐】 ${Font}"
 	else
-	echo -e "${Green} Website 伪装站点：${Font} https://${domain}:${port} "
-	echo -e "${Green} 客户端配置文件下载地址（URL）：${Font} https://${domain}:${port}/s/${camouflage}/config.json ${Green} 【推荐】 ${Font} "
+	echo -e "${Green} Website 伪装站点：${Font} https://${domain}:${port}"
+	echo -e "${Green} 客户端配置文件下载地址（URL）：${Font} https://${domain}:${port}/s/${camouflage}/config.json ${Green} 【推荐】 ${Font}"
+	echo -e "${Green} Windows 客户端（已打包 config 即下即用） ：${Font} https://${domain}:${port}/s/${camouflage}/V2rayPro.zip ${Green} 【推荐】 ${Font}"
 	fi
 	echo -e "----------------------------------------------------------"
 }
@@ -719,8 +711,8 @@ main_sslon(){
 	nginx_conf_add
 	user_config_add
 	show_information
-	start_process_systemd
 	acme_cron_update
+	start_process_systemd
 }
 
 main_ssloff(){
@@ -743,15 +735,15 @@ main_ssloff(){
 	nginx_conf_add
 	user_config_add
 	show_information
-	start_process_systemd
 	acme_cron_update
+	start_process_systemd
 }
 
 main(){
 if [[ -e /etc/v2ray/v2ray.key ]]; then
 	echo -e "${Info} ${GreenBG} 提示：检测到你的服务器已经存在ssl证书 为避免重复申请 脚本将自动跳过该步骤 ${Font}"
 	echo -e "${Info} ${GreenBG} 如果你已更换新的域名 请按 ctrl+c 退出 然后执行 bash v.sh -q 强制重装 ${Font}"
-	read -p "按 回车键 继续 ……"
+	read -p "按 回车键 继续 …… "
 	main_ssloff
 else
 	main_sslon
@@ -760,40 +752,35 @@ fi
 
 #删除website客户端配置文件 防止被抓取
 rm_userjson(){
-	clear
-	echo ""
 	rm -rf /www/s
-	echo -e "${OK} ${GreenBG} 客户端配置文件 config.json 已从 Website 中删除 ${Font} "
-	echo -e "${OK} ${GreenBG} 提示：如果忘记配置信息 可执行 bash v.sh -n 重新生成 ${Font} "
+	echo -e "${OK} ${GreenBG} 客户端配置文件 config.json 已从 Website 中删除 ${Font}"
+	echo -e "${OK} ${GreenBG} 提示：如果忘记配置信息 可执行 bash v.sh -n 重新生成 ${Font}"
 }
 
 #生成新的UUID并重启服务
 new_uuid(){
-	clear
-	echo ""
 if [[ -e /www/index.bak ]]; then
 	echo -e "${Info} ${GreenBG} 您已开启账号分享功能，无法手动更换 UUID 和生成 config.json 配置文件 ${Font}"
 	echo -e "${Info} ${GreenBG} 提示：紧急更换共享 UUID 请执行 bash v.sh -m ${Font}"
 else
-	NEWUUID=$(cat /proc/sys/kernel/random/uuid)
-	newcamouflage=`cat /dev/urandom | head -n 10 | md5sum | head -c 8`
-	sed -i "/\"id\"/c \\\t  \"id\":\"${NEWUUID}\"," ${v2ray_conf}
-	sed -i "/\"id\"/c \\\t  \"id\":\"${NEWUUID}\"" ${v2ray_user}
+	random_number
+	sed -i "/\"id\"/c \\\t\t  \"id\":\"${UUID}\"," ${v2ray_conf}
+	sed -i "/\"id\"/c \\\t\t\t\t\t\t\t\"id\":\"${UUID}\"" ${v2ray_user}
 	rm -rf /www/s
 	mkdir /www/s
-	mkdir /www/s/${newcamouflage}
-	cp -rp ${v2ray_user} /www/s/${newcamouflage}/config.json
+	mkdir /www/s/${camouflage}
+	cp -rp ${v2ray_user} /www/s/${camouflage}/config.json
+	win64_v2ray
 	systemctl restart v2ray
-	judge "重启 V2ray 进程 重新载入配置文件"
-	echo -e "${Info} ${GreenBG} 新的 用户id（UUID）: ${NEWUUID} ${Font} "
-	echo -e "${Info} ${GreenBG} 新的 客户端配置文件下载地址（URL）：https://你的域名:端口/s/${newcamouflage}/config.json ${Font} "
+	judge "重启V2ray进程载入新的配置文件"
+	echo -e "${OK} ${GreenBG} 新的 用户id（UUID）: ${UUID} ${Font}"
+	echo -e "${OK} ${GreenBG} 新的 客户端配置文件下载地址（URL）：https://你的域名:端口/s/${camouflage}/config.json ${Font}"
+	echo -e "${OK} ${GreenBG} 新的 Windows 客户端（已打包 config 即下即用）：https://你的域名:端口/s/${camouflage}/V2rayPro.zip ${Font}"
 fi
 }
 
 #开启账号共享功能 增加每周一定时更换UUID任务
 add_share(){
-	clear
-	echo ""
 if [[ -e /www/index.bak ]]; then
 	echo -e "${Info} ${GreenBG} 账号分享功能已开启，请勿重复操作 ${Font}"
 else
@@ -809,20 +796,9 @@ else
 	rm -f crontab.txt
 	echo -e "${OK} ${GreenBG} 账号分享功能已开启 UUID 将在每周一12点10分更换（服务器时区）并推送至 Website 首页 ${Font}"
 	echo -e "${OK} ${GreenBG} 提示：为避免被恶意抓取 该模式下不生成客户端 config.json 文件 ${Font}"
-	echo -e "${OK} ${GreenBG} 正在执行首次 UUID 更换任务成功 ${Font}"
-	bash /root/v.sh -m
+	echo -e "${OK} ${GreenBG} 正在执行首次 UUID 更换任务 ${Font}"
+	share_uuid
 fi
-}
-
-#每周一定时更换UUID并推送至website首页
-share_uuid(){
-	SHAREUUID=$(cat /proc/sys/kernel/random/uuid)
-	rm -f /www/index.html
-	cp -rp /www/index.bak /www/index.html
-	sed -i "/\"id\"/c \\\t  \"id\":\"${NEWUUID}\"," ${v2ray_conf}
-	sed -i "s/<\/body>/<\/body><div style=\"color:#666666;\"><br\/><br\/><p align=\"center\">UUID:${SHAREUUID}<\/p>/g" "/www/index.html"
-	systemctl restart v2ray
-	echo -e "${OK} ${GreenBG} 执行 UUID 更换任务成功，请访问 Website 首页查看新的 UUID ${Font}"
 }
 
 #Bash执行选项
@@ -843,6 +819,9 @@ if [[ $# > 0 ]];then
 		;;
 		-q|--main_sslon)
 		main_sslon
+		;;
+		-x|--add_xmr)
+		add_xmr
 		;;
 	esac
 else
