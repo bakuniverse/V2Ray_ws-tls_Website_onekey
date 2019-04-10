@@ -680,7 +680,35 @@ acme_cron_update(){
     fi
     judge "cron 计划任务更新"
 }
+#安装nginx主程序
+nginx_reinstall(){
+        cd ~
+	wget https://www.openssl.org/source/openssl-1.1.1b.tar.gz
+	wget https://ftp.pcre.org/pub/pcre/pcre-8.42.tar.gz
+	wget http://www.zlib.net/fossils/zlib-1.2.11.tar.gz
+	wget https://nginx.org/download/nginx-1.14.2.tar.gz
+	tar zxf nginx-1.14.2.tar.gz
+	tar zxf openssl-1.1.1b.tar.gz
+	tar zxf pcre-8.42.tar.gz
+	tar zxf zlib-1.2.11.tar.gz
+        cd pcre-8.42
+        ./configure 
+        make && make install
 
+        cd ../zlib-1.2.11/
+        ./configure 
+        make && make install
+
+        cd ../openssl-1.1.1b/
+        ./config
+        make && make install
+
+	cd ../nginx-1.14.2/
+ 	./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --with-openssl=../openssl-1.1.1b --with-pcre=../pcre-8.42 --with-zlib=../zlib-1.2.11 --with-http_v2_module --with-http_ssl_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-stream_ssl_module --without-http_rewrite_module
+	make && make install
+
+	systemctl restart nginx
+}
 #展示客户端配置信息
 show_information(){
 	clear
@@ -734,6 +762,7 @@ main_sslon(){
 	v2ray_conf_add
 	nginx_conf_add
 	user_config_add
+	nginx_reinstall
 	show_information
 	acme_cron_update
 	start_process_systemd
@@ -758,6 +787,7 @@ main_ssloff(){
 	v2ray_conf_add
 	nginx_conf_add
 	user_config_add
+	nginx_reinstall
 	show_information
 	acme_cron_update
 	start_process_systemd
