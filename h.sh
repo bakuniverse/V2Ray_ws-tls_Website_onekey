@@ -345,9 +345,6 @@ nginx_install(){
 	tar zxf openssl-1.1.1b.tar.gz
 	tar zxf pcre-8.42.tar.gz
 	tar zxf zlib-1.2.11.tar.gz
-	mkdir /etc/nginx
-	mkdir /etc/nginx/ssl
-	mkdir /etc/nginx/conf.d
         cd pcre-8.42
         ./configure 
         make && make install
