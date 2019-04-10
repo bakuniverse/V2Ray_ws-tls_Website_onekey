@@ -336,12 +336,12 @@ acme(){
 
 #安装nginx主程序
 nginx_install(){
-        cd ~
+        ${INS} install nginx -y
 	wget https://www.openssl.org/source/openssl-1.1.1b.tar.gz
 	wget https://ftp.pcre.org/pub/pcre/pcre-8.42.tar.gz
 	wget http://www.zlib.net/fossils/zlib-1.2.11.tar.gz
-	wget https://nginx.org/download/nginx-1.15.11.tar.gz
-	tar zxf nginx-1.15.11.tar.gz
+	wget https://nginx.org/download/nginx-1.14.2.tar.gz
+	tar zxf nginx-1.14.2.tar.gz
 	tar zxf openssl-1.1.1b.tar.gz
 	tar zxf pcre-8.42.tar.gz
 	tar zxf zlib-1.2.11.tar.gz
@@ -360,8 +360,8 @@ nginx_install(){
         ./config
         make && make install
 
-	cd ../nginx-1.15.11/
-	./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --with-openssl=../openssl-1.1.1b --with-pcre=../pcre-8.42 --with-zlib=../zlib-1.2.11 --with-http_v2_module --with-http_ssl_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-stream_ssl_module --without-http_rewrite_module
+	cd ../nginx-1.14.2/
+ 	./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --with-openssl=../openssl-1.1.1b --with-pcre=../pcre-8.42 --with-zlib=../zlib-1.2.11 --with-http_v2_module --with-http_ssl_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-stream_ssl_module --without-http_rewrite_module
 	make && make install
 
 	if [[ -d /etc/nginx ]];then
