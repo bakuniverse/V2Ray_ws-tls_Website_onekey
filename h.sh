@@ -162,7 +162,7 @@ apache_uninstall(){
 	echo -e "${OK} ${GreenBG} 正在更新源 请稍后 …… ${Font}"
 
 	apt -y update
-
+        apt-get install make gcc g++ perl libperl-dev libpcre3 libpcre3-dev openssl libssl-dev -y
 	fi
 
 	systemctl disable nginx >/dev/null 2>&1
@@ -336,20 +336,32 @@ acme(){
 
 #安装nginx主程序
 nginx_install(){
-	apt-get install make gcc g++ perl libperl-dev -y
+        cd ~
 	wget https://www.openssl.org/source/openssl-1.1.1b.tar.gz
 	wget https://ftp.pcre.org/pub/pcre/pcre-8.42.tar.gz
 	wget http://www.zlib.net/fossils/zlib-1.2.11.tar.gz
+	wget https://nginx.org/download/nginx-1.15.11.tar.gz
+	tar zxf nginx-1.15.11.tar.gz
 	tar zxf openssl-1.1.1b.tar.gz
 	tar zxf pcre-8.42.tar.gz
 	tar zxf zlib-1.2.11.tar.gz
 	mkdir /etc/nginx
 	mkdir /etc/nginx/ssl
 	mkdir /etc/nginx/conf.d
-	wget https://nginx.org/download/nginx-1.15.11.tar.gz
-	tar zxf nginx-1.15.11.tar.gz
-	cd nginx-1.15.11
-	./configure --prefix=/etc/nginx --with-openssl=../openssl-1.1.1b --with-http_v2_module --with-http_ssl_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-stream_ssl_module
+        cd ../pcre-8.42/
+        ./configure 
+        make && make install
+
+        cd ../zlib-1.2.11/
+        ./configure 
+        make && make install
+
+        cd ../openssl-1.1.1b/
+        ./config
+        make && make install
+
+	cd ../nginx-1.15.11/
+	./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --with-openssl=../openssl-1.1.1b --with-pcre=../pcre-8.42 --with-zlib=../zlib-1.2.11--with-http_v2_module --with-http_ssl_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-stream_ssl_module --without-http_rewrite_module
 	make && make install
 
 	if [[ -d /etc/nginx ]];then
