@@ -348,7 +348,7 @@ nginx_install(){
 	mkdir /etc/nginx
 	mkdir /etc/nginx/ssl
 	mkdir /etc/nginx/conf.d
-        cd ../pcre-8.42/
+        cd pcre-8.42
         ./configure 
         make && make install
 
