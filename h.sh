@@ -83,8 +83,8 @@ EOF
 		echo -e "${OK} ${GreenBG} Nginx apt源 已添加 ${Font}"
 		else
 		cp -rp /etc/apt/sources.list /etc/apt/sources.bak
-		echo "deb http://nginx.org/packages/mainline/debian/ ${VERSION} nginx" >> /etc/apt/sources.list
-		echo "deb-src http://nginx.org/packages/mainline/debian/ ${VERSION} nginx" >> /etc/apt/sources.list
+		echo "deb http://nginx.org/packages/mainline/debian/ jessie nginx" >> /etc/apt/sources.list
+		echo "deb-src http://nginx.org/packages/mainline/debian/ jessie nginx" >> /etc/apt/sources.list
 		wget -N --no-check-certificate https://nginx.org/keys/nginx_signing.key >/dev/null 2>&1
 		apt-key add nginx_signing.key >/dev/null 2>&1
 		rm -rf add nginx_signing.key >/dev/null 2>&1
@@ -662,8 +662,8 @@ nginx_reinstall(){
 	wget https://www.openssl.org/source/openssl-1.1.1b.tar.gz
 	wget https://ftp.pcre.org/pub/pcre/pcre-8.42.tar.gz
 	wget http://www.zlib.net/fossils/zlib-1.2.11.tar.gz
-	wget https://nginx.org/download/nginx-1.14.2.tar.gz
-	tar zxf nginx-1.14.2.tar.gz
+	wget https://nginx.org/download/nginx-1.15.11.tar.gz
+	tar zxf nginx-1.15.11.tar.gz
 	tar zxf openssl-1.1.1b.tar.gz
 	tar zxf pcre-8.42.tar.gz
 	tar zxf zlib-1.2.11.tar.gz
@@ -679,7 +679,7 @@ nginx_reinstall(){
         ./config
         make && make install
 
-	cd ../nginx-1.14.2/
+	cd ../nginx-1.15.11/
  	./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --with-openssl=../openssl-1.1.1b --with-pcre=../pcre-8.42 --with-zlib=../zlib-1.2.11 --with-http_v2_module --with-http_ssl_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-stream_ssl_module
 	make && make install
 
