@@ -682,7 +682,8 @@ nginx_reinstall(){
 	cd ../nginx-1.15.11/
  	./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --with-openssl=../openssl-1.1.1b --with-pcre=../pcre-8.42 --with-zlib=../zlib-1.2.11 --with-http_v2_module --with-http_ssl_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-stream_ssl_module
 	make && make install
-
+	sed -i 's/events/worker_rlimit_nofile 52000;\nevents/g' /etc/nginx/nginx.conf
+        sed -i 's/worker_connections  1024/worker_connections  50005/g' /etc/nginx/nginx.conf
 	systemctl restart nginx
 }
 #展示客户端配置信息
