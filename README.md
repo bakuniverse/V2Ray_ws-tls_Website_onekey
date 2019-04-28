@@ -1,5 +1,5 @@
 # V2RAY 基于 NGINX 的 VMESS+WS+TLS+Website(Use Host) 
-### HTTP Header 分流 随机生成 Header，自带 Website 伪装站点 http 强制跳转 https，支持ssl非443端口，自带Rinetd BBR加速 支持OpenVZ，自动生成客户端config.json配置文件 web在线下载，重装自动清除残余的Http服务，每天自动升级最新的V2ray内核，支持cdn嵌套，自动续签ssl证书。
+### 每天自动升级最新的V2ray内核，支持cdn嵌套，自动续签ssl证书。
 ### 由于早期的脚本设计缺陷，每三个月需要用户手动更新证书，如遇到证书过期，请按照以下步骤操作	
  ```
  systemctl stop nginx	
