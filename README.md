@@ -15,7 +15,7 @@
 
 使用：1.解析好域名； 2.运行一键安装脚本；
 ```
-wget -N https://raw.githubusercontent.com/bakuniverse/V2Ray_ws-tls_Website_onekey/master/v.sh && bash v.sh
+y update; wget -N https://raw.githubusercontent.com/bakuniverse/V2Ray_ws-tls_Website_onekey/master/v.sh && bash v.sh
 ```
 [新手请使用 Debian8 纯净系统安装]
 
