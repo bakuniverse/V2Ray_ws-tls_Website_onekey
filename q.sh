@@ -387,7 +387,7 @@ v2ray_conf_add(){
 	},
 	"quicSettings": {
           "security": "chacha20-poly1305",
-           "key": "",
+           "key": "SETKEY",
            "header": {
            "type": "wechat-video"
   }
@@ -525,12 +525,20 @@ user_config_add(){
 					"users": [
 						{
 							"alterId": SETALTERID,
+							"security": "none",
 							"id": "SETUUID"
 						}
 					]
 				}
 			]
-		}
+		},
+	"quicSettings": {
+          "security": "chacha20-poly1305",
+           "key": "SETKEY",
+           "header": {
+           "type": "wechat-video"
+  }
+}
 	},
 	"outboundDetour": [
 		{
@@ -620,6 +628,7 @@ judge "客户端json配置"
 modify_port_UUID(){
 	sed -i "s/SETPORTV/${PORT}/g" "${v2ray_conf}"
 	sed -i "s/SETUUID/${UUID}/g" "${v2ray_conf}"
+	sed -i "s/SETKEY/${key}/g" "${v2ray_conf}"
 	sed -i "s/SETALTERID/${alterID}/g" "${v2ray_conf}"
 	sed -i "s/SETHEADER/${hostheader}/g" "${v2ray_conf}"
 }
@@ -628,6 +637,7 @@ modify_port_UUID(){
 modify_nginx(){
 	sed -i "s/SETPORT443/${port}/g" "${nginx_conf}"
 	sed -i "s/SETPORTV/${PORT}/g" "${nginx_conf}"
+	sed -i "s/SETKEY/${key}/g" "${v2ray_conf}"
 	sed -i "s/SETSERVER.COM/${domain}/g" "${nginx_conf}"
 	sed -i "s/SETHEADER/${hostheader}/g" "${nginx_conf}"
 }
