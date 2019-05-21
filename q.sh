@@ -132,8 +132,10 @@ port_alterid_set(){
 	echo -e "${Info} ${GreenBG} 【配置 3/3 】请输入alterID（默认:64 无特殊需求请直接按回车键） ${Font}"
 	stty erase '^H' && read -p "请输入：" alterID
 	[[ -z ${alterID} ]] && alterID="64"
+	echo -e "${Info} ${GreenBG} 【配置 4/4 】请输入混淆Key （任意字符及字母） ${Font}"
+	stty erase '^H' && read -p "请输入：" key
 	echo -e "----------------------------------------------------------"
-	echo -e "${Info} ${GreenBG} 你输入的配置信息为 域名：${domain} 端口：${port} alterID：${alterID} ${Font}"
+	echo -e "${Info} ${GreenBG} 你输入的配置信息为 域名：${domain} 端口：${port} alterID：${alterID} key: ${key} ${Font}"
 	echo -e "----------------------------------------------------------"
 }
 
@@ -369,6 +371,7 @@ v2ray_conf_add(){
 	  "clients": [
 		{
 		  "id": "SETUUID",
+		  "security": "none",
 		  "alterId": SETALTERID
 		}
 	  ]
@@ -381,7 +384,14 @@ v2ray_conf_add(){
 	  "Host": "www.SETHEADER.com"
 	  }
 	  }
-	}
+	},
+	"quicSettings": {
+          "security": "chacha20-poly1305",
+           "key": "",
+           "header": {
+           "type": "wechat-video"
+  }
+}
   },
   "outbound": {
 	"protocol": "freedom",
@@ -639,7 +649,7 @@ start_process_systemd(){
 	systemctl restart nginx
 	judge "Nginx 启动"
 
-	systemctl start v2ray
+	systemctl restart v2ray
 	judge "V2ray 启动"
 	
 	/etc/init.d/cron restart
