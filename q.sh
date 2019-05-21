@@ -637,7 +637,6 @@ modify_port_UUID(){
 modify_nginx(){
 	sed -i "s/SETPORT443/${port}/g" "${nginx_conf}"
 	sed -i "s/SETPORTV/${PORT}/g" "${nginx_conf}"
-	sed -i "s/SETKEY/${key}/g" "${v2ray_conf}"
 	sed -i "s/SETSERVER.COM/${domain}/g" "${nginx_conf}"
 	sed -i "s/SETHEADER/${hostheader}/g" "${nginx_conf}"
 }
@@ -647,6 +646,7 @@ modify_userjson(){
 	sed -i "s/SETSERVER/${domain}/g" "${v2ray_user}"
 	sed -i "s/SETPORT443/${port}/g" "${v2ray_user}"
 	sed -i "s/SETUUID/${UUID}/g" "${v2ray_user}"
+	sed -i "s/SETKEY/${key}/g" "${v2ray_conf}"
 	sed -i "s/SETALTERID/${alterID}/g" "${v2ray_user}"
 	sed -i "s/SETHEADER/www.${hostheader}.com/g" "${v2ray_user}"
 }
