@@ -661,15 +661,15 @@ nginx_reinstall(){
         cd ~
 	tmp=`/usr/sbin/nginx -v 2>&1`
 	nginx_version=`echo $tmp | cut -c22-`
-	wget https://www.openssl.org/source/openssl-1.1.1b.tar.gz
-	wget https://ftp.pcre.org/pub/pcre/pcre-8.42.tar.gz
+	wget https://www.openssl.org/source/openssl-1.1.1d.tar.gz
+	wget https://ftp.pcre.org/pub/pcre/pcre-8.43.tar.gz
 	wget http://www.zlib.net/fossils/zlib-1.2.11.tar.gz
 	wget https://nginx.org/download/nginx-$nginx_version.tar.gz
 	tar zxf nginx-$nginx_version.tar.gz
-	tar zxf openssl-1.1.1b.tar.gz
-	tar zxf pcre-8.42.tar.gz
+	tar zxf openssl-1.1.1d.tar.gz
+	tar zxf pcre-8.43.tar.gz
 	tar zxf zlib-1.2.11.tar.gz
-        cd pcre-8.42
+        cd pcre-8.43
         ./configure 
         make && make install
 
@@ -677,12 +677,12 @@ nginx_reinstall(){
         ./configure 
         make && make install
 
-        cd ../openssl-1.1.1b/
+        cd ../openssl-1.1.1d/
         ./config
         make && make install
 
 	cd ../nginx-$nginx_version/
- 	./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --with-openssl=../openssl-1.1.1b --with-pcre=../pcre-8.42 --with-zlib=../zlib-1.2.11 --with-http_v2_module --with-http_ssl_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-stream_ssl_module
+ 	./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --with-openssl=../openssl-1.1.1d --with-pcre=../pcre-8.43 --with-zlib=../zlib-1.2.11 --with-http_v2_module --with-http_ssl_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-stream_ssl_module
 	make && make install
 	sed -i 's/events/worker_rlimit_nofile 52000;\nevents/g' /etc/nginx/nginx.conf
         sed -i 's/worker_connections  1024/worker_connections  50005/g' /etc/nginx/nginx.conf
