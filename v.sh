@@ -336,6 +336,7 @@ acme(){
 
 #安装nginx主程序
 nginx_install(){
+        ${INS} update -y
 	${INS} install nginx -y
 	if [[ -d /etc/nginx ]];then
 		echo -e "${OK} ${GreenBG} nginx 安装完成 ${Font}"
