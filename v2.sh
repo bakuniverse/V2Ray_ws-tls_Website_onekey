@@ -22,13 +22,12 @@ Error="${Red}[错误]${Font}"
 
 #定义配置文件路径
 v2ray_conf_dir="/etc/v2ray"
-nginx_conf_dir="/etc/nginx/conf.d"
+nginx_conf_dir="/etc/nginx/conf/conf.d"
 v2ray_conf="${v2ray_conf_dir}/config.json"
 v2ray_user="${v2ray_conf_dir}/user.json"
 nginx_conf="${nginx_conf_dir}/v2ray.conf"
 nginx_dir="/etc/nginx"
 nginx_openssl_src="/usr/local/src"
-nginx_version="1.16.1"
 openssl_version="1.1.1d"
 
 source /etc/os-release
