@@ -334,6 +334,9 @@ nginx_install(){
 	cd ../nginx-$nginx_version/
  	./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --with-openssl=../openssl-1.1.1d --with-pcre=/root/pcre-8.43 --with-zlib=../zlib-1.2.11 --with-http_v2_module --with-http_ssl_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-stream_ssl_module
 	make && make install
+	mkdir ${nginx_dir}/conf.d
+        touch /etc/nginx/conf.d/v2ray.conf
+        sed -i '$i include conf.d/*.conf;' /etc/nginx/nginx.conf
 	sed -i 's/events/worker_rlimit_nofile 52000;\nevents/g' /etc/nginx/nginx.conf
         sed -i 's/worker_connections  1024/worker_connections  50005/g' /etc/nginx/nginx.conf
 	systemctl restart nginx
