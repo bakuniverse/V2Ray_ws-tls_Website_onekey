@@ -82,7 +82,7 @@ EOF
 	elif [[ "${ID}" == "debian" && ${VERSION_ID} -ge 8 ]];then
 		echo -e "${OK} ${GreenBG} 当前系统为 Debian ${VERSION_ID} ${VERSION} ${Font}"
 		INS="apt"
-    ${INS} update -y
+                ${INS} update -y
 		## 添加 Nginx apt源
 		if [[ -e /etc/apt/sources.bak ]]; then
 		echo -e "${OK} ${GreenBG} Nginx apt源 已添加 ${Font}"
@@ -198,14 +198,16 @@ dependency_install(){
 		fi
 	done
 	${INS} install curl lsof unzip zip -y
-
+        ${INS} -y install libpcre3 libpcre3-dev zlib1g-dev dbus
+	${INS} -y install gcc autoconf automake make
+	
 	if [[ "${ID}" == "centos" ]];then
 		${INS} -y install crontabs
 	else
 		${INS} -y install cron
 	fi
 	judge "安装 crontab"
-
+     
 	${INS} install bc -y
 	judge "安装 bc"
 }
