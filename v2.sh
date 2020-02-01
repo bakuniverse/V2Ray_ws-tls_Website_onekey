@@ -627,6 +627,33 @@ modify_userjson
 
 judge "客户端json配置"
 }
+#生成nginx配置文件
+systemd_add(){
+
+        touch /etc/systemd/system/nginx.service
+        chmod +x /etc/systemd/system/nginx.service
+	
+	cat <<EOF > /etc/systemd/system/nginx.service
+[Unit]
+Description=A high performance web server and a reverse proxy server
+After=network.target
+
+[Service]
+Type=forking
+PIDFile=/etc/nginx/logs/nginx.pid
+ExecStartPre=/usr/sbin/nginx -t -q -g 'daemon on; master_process on;'
+ExecStart=/usr/sbin/nginx -g 'daemon on; master_process on;'
+ExecReload=/usr/sbin/nginx -g 'daemon on; master_process on;' -s reload
+ExecStop=-/sbin/start-stop-daemon --quiet --stop --retry QUIT/5 --pidfile /etc/nginx/logs/nginx.pid
+TimeoutStopSec=5
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target
+
+EOF
+
+}
 
 #修正v2ray配置文件
 modify_port_UUID(){
@@ -734,6 +761,7 @@ main_sslon(){
 	web_install
 	v2ray_conf_add
 	nginx_conf_add
+	systemd_add
 	user_config_add
 	show_information
 	acme_cron_update
@@ -758,6 +786,7 @@ main_ssloff(){
 	web_install
 	v2ray_conf_add
 	nginx_conf_add
+	systemd_add
 	user_config_add
 	show_information
 	acme_cron_update
