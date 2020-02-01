@@ -3,6 +3,7 @@
 ### 由于早期的脚本设计缺陷，每三个月需要用户手动更新证书，如遇到证书过期，请按照以下步骤操作	
  ```
  systemctl stop nginx	
+ apt install systemd-sysv && reboot
   ```
    ```
   "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh"
