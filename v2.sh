@@ -309,55 +309,36 @@ nginx_install(){
 #    if [[ -d "/etc/nginx" ]];then
 #        rm -rf /etc/nginx
 #    fi
+        cd ~
+	tmp=`/usr/sbin/nginx -v 2>&1`
+	nginx_version="1.17.8"
+	wget https://www.openssl.org/source/openssl-1.1.1d.tar.gz
+	wget https://ftp.pcre.org/pub/pcre/pcre-8.43.tar.gz
+	wget http://www.zlib.net/fossils/zlib-1.2.11.tar.gz
+	wget https://nginx.org/download/nginx-$nginx_version.tar.gz
+	tar zxf nginx-$nginx_version.tar.gz
+	tar zxf openssl-1.1.1d.tar.gz
+	tar zxf pcre-8.43.tar.gz
+	tar zxf zlib-1.2.11.tar.gz
+        cd pcre-8.43
+        ./configure 
+        make && make install
 
-    wget -nc http://nginx.org/download/nginx-${nginx_version}.tar.gz -P ${nginx_openssl_src}
-    judge "Nginx 下载"
-    wget -nc https://www.openssl.org/source/openssl-${openssl_version}.tar.gz -P ${nginx_openssl_src}
-    judge "openssl 下载"
+        cd ../zlib-1.2.11/
+        ./configure 
+        make && make install
 
-    cd ${nginx_openssl_src}
+        cd ../openssl-1.1.1d/
+        ./config
+        make && make install
 
-    [[ -d nginx-"$nginx_version" ]] && rm -rf nginx-"$nginx_version"
-    tar -zxvf nginx-"$nginx_version".tar.gz
+	cd ../nginx-$nginx_version/
+ 	./configure --prefix=/etc/nginx --sbin-path=/usr/sbin/nginx --conf-path=/etc/nginx/nginx.conf --with-openssl=../openssl-1.1.1d --with-pcre=../pcre-8.43 --with-zlib=../zlib-1.2.11 --with-http_v2_module --with-http_ssl_module --with-http_gzip_static_module --with-http_stub_status_module --with-http_sub_module --with-stream --with-stream_ssl_module
+	make && make install
+	sed -i 's/events/worker_rlimit_nofile 52000;\nevents/g' /etc/nginx/nginx.conf
+        sed -i 's/worker_connections  1024/worker_connections  50005/g' /etc/nginx/nginx.conf
+	systemctl restart nginx
 
-    [[ -d openssl-"$openssl_version" ]] && rm -rf openssl-"$openssl_version"
-    tar -zxvf openssl-"$openssl_version".tar.gz
-
-    [[ -d "$nginx_dir" ]] && rm -rf ${nginx_dir}
-
-    echo -e "${OK} ${GreenBG} 即将开始编译安装 Nginx, 过程稍久，请耐心等待 ${Font}"
-    sleep 4
-
-    cd nginx-${nginx_version}
-    ./configure --prefix="${nginx_dir}"                         \
-            --with-http_ssl_module                              \
-            --with-http_gzip_static_module                      \
-            --with-http_stub_status_module                      \
-            --with-pcre                                         \
-            --with-http_realip_module                           \
-            --with-http_flv_module                              \
-            --with-http_mp4_module                              \
-            --with-http_secure_link_module                      \
-            --with-http_v2_module                               \
-            --with-openssl=../openssl-"$openssl_version"
-    judge "编译检查"
-    make && make install
-    judge "Nginx 编译安装"
-    mkdir ${nginx_dir}/conf/conf.d
-    touch /etc/nginx/conf.d/v2ray.conf
-    
-    # 修改基本配置
-    sed -i 's/#user  nobody;/user  root;/' ${nginx_dir}/conf/nginx.conf
-    sed -i 's/worker_processes  1;/worker_processes  3;/' ${nginx_dir}/conf/nginx.conf
-    sed -i 's/    worker_connections  1024;/    worker_connections  4096;/' ${nginx_dir}/conf/nginx.conf
-    sed -i '$i include conf.d/*.conf;' ${nginx_dir}/conf/nginx.conf
-
-
-    # 删除临时文件
-    rm -rf nginx-"${nginx_version}"
-    rm -rf openssl-"${openssl_version}"
-    rm -rf ../nginx-"${nginx_version}".tar.gz
-    rm -rf ../openssl-"${openssl_version}".tar.gz
 
 	  if [[ -d /etc/nginx ]];then
 		echo -e "${OK} ${GreenBG} nginx 安装完成 ${Font}"
