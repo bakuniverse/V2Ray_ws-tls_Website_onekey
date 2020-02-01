@@ -66,50 +66,13 @@ check_system(){
 	if [[ "${ID}" == "centos" && ${VERSION_ID} -ge 7 ]];then
 		echo -e "${OK} ${GreenBG} 当前系统为 Centos ${VERSION_ID} ${VERSION} ${Font}"
 		INS="yum"
-		echo -e "${OK} ${GreenBG} SElinux 设置中，请耐心等待，不要进行其他操作${Font}"
-		setsebool -P httpd_can_network_connect 1 >/dev/null 2>&1
-		echo -e "${OK} ${GreenBG} SElinux 设置完成 ${Font}"
-		## 添加 Nginx apt源
-		touch /etc/yum.repos.d/nginx.repo
-		cat <<EOF > /etc/yum.repos.d/nginx.repo
-[nginx]
-name=nginx repo
-baseurl=http://nginx.org/packages/mainline/centos/7/\$basearch/
-gpgcheck=0
-enabled=1
-EOF
-		echo -e "${OK} ${GreenBG} 添加 Nginx yum源 成功 ${Font}"
 	elif [[ "${ID}" == "debian" && ${VERSION_ID} -ge 8 ]];then
 		echo -e "${OK} ${GreenBG} 当前系统为 Debian ${VERSION_ID} ${VERSION} ${Font}"
 		INS="apt"
                 ${INS} update -y
-		## 添加 Nginx apt源
-		if [[ -e /etc/apt/sources.bak ]]; then
-		echo -e "${OK} ${GreenBG} Nginx apt源 已添加 ${Font}"
-		else
-		cp -rp /etc/apt/sources.list /etc/apt/sources.bak
-		echo "deb http://nginx.org/packages/mainline/debian/ ${VERSION} nginx" >> /etc/apt/sources.list
-		echo "deb-src http://nginx.org/packages/mainline/debian/ ${VERSION} nginx" >> /etc/apt/sources.list
-		wget -N --no-check-certificate https://nginx.org/keys/nginx_signing.key >/dev/null 2>&1
-		apt-key add nginx_signing.key >/dev/null 2>&1
-		rm -rf add nginx_signing.key >/dev/null 2>&1
-		echo -e "${OK} ${GreenBG} 添加 Nginx apt源 成功 ${Font}"
-		fi
 	elif [[ "${ID}" == "ubuntu" && `echo "${VERSION_ID}" | cut -d '.' -f1` -ge 16 ]];then
 		echo -e "${OK} ${GreenBG} 当前系统为 Ubuntu ${VERSION_ID} ${VERSION_CODENAME} ${Font}"
 		INS="apt"
-		## 添加 Nginx apt源
-		if [[ -e /etc/apt/sources.bak ]]; then
-		echo -e "${OK} ${GreenBG} Nginx apt源 已添加 ${Font}"
-		else
-		cp -rp /etc/apt/sources.list /etc/apt/sources.bak
-		echo "deb http://nginx.org/packages/mainline/ubuntu/ ${VERSION_CODENAME} nginx" >> /etc/apt/sources.list
-		echo "deb-src http://nginx.org/packages/mainline/ubuntu/ ${VERSION_CODENAME} nginx" >> /etc/apt/sources.list
-		wget -N --no-check-certificate https://nginx.org/keys/nginx_signing.key >/dev/null 2>&1
-		apt-key add nginx_signing.key >/dev/null 2>&1
-		rm -rf add nginx_signing.key >/dev/null 2>&1
-		echo -e "${OK} ${GreenBG} 添加 Nginx apt源 成功 ${Font}"
-		fi
 	else
 		echo -e "${Error} ${RedBG} 当前系统为 ${ID} ${VERSION_ID} 不在支持的系统列表内，安装中断 ${Font}"
 		exit 1
@@ -343,7 +306,11 @@ acme(){
 
 #安装nginx主程序
 nginx_install(){
-wget -nc http://nginx.org/download/nginx-${nginx_version}.tar.gz -P ${nginx_openssl_src}
+#    if [[ -d "/etc/nginx" ]];then
+#        rm -rf /etc/nginx
+#    fi
+
+    wget -nc http://nginx.org/download/nginx-${nginx_version}.tar.gz -P ${nginx_openssl_src}
     judge "Nginx 下载"
     wget -nc https://www.openssl.org/source/openssl-${openssl_version}.tar.gz -P ${nginx_openssl_src}
     judge "openssl 下载"
@@ -376,7 +343,9 @@ wget -nc http://nginx.org/download/nginx-${nginx_version}.tar.gz -P ${nginx_open
     judge "编译检查"
     make && make install
     judge "Nginx 编译安装"
-
+    mkdir ${nginx_dir}/conf/conf.d
+    touch /etc/nginx/conf.d/v2ray.conf
+    
     # 修改基本配置
     sed -i 's/#user  nobody;/user  root;/' ${nginx_dir}/conf/nginx.conf
     sed -i 's/worker_processes  1;/worker_processes  3;/' ${nginx_dir}/conf/nginx.conf
