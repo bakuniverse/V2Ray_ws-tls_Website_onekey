@@ -22,7 +22,7 @@ Error="${Red}[错误]${Font}"
 
 #定义配置文件路径
 v2ray_conf_dir="/etc/v2ray"
-nginx_conf_dir="/etc/nginx/conf/conf.d"
+nginx_conf_dir="/etc/nginx/conf.d"
 v2ray_conf="${v2ray_conf_dir}/config.json"
 v2ray_user="${v2ray_conf_dir}/user.json"
 nginx_conf="${nginx_conf_dir}/v2ray.conf"
@@ -218,22 +218,39 @@ port_exist_check(){
 
 #同步服务器时间
 time_modify(){
+    ${INS} -y install chrony
+    judge "安装 chrony 时间同步服务 "
 
-	${INS} install ntpdate -y
-	judge "安装 NTPdate 时间同步服务 "
+    timedatectl set-ntp true
 
-	systemctl stop ntp &>/dev/null
+    if [[ "${ID}" == "centos" ]];then
+       systemctl enable chronyd && systemctl restart chronyd
+    else
+       systemctl enable chrony && systemctl restart chrony
+    fi
 
-	echo -e "${Info} ${GreenBG} 正在进行时间同步 ${Font}"
-	ntpdate time.nist.gov
+    judge "chronyd 启动 "
 
-	if [[ $? -eq 0 ]];then 
-		echo -e "${OK} ${GreenBG} 时间同步成功 ${Font}"
-		echo -e "${OK} ${GreenBG} 当前系统时间 `date -R`（时区时间换算后误差应为三分钟以内）${Font}"
-		sleep 1
-	else
-		echo -e "${Error} ${RedBG} 时间同步失败，请检查ntpdate服务是否正常工作 ${Font}"
-	fi 
+    timedatectl set-timezone Asia/Shanghai
+
+    echo -e "${OK} ${GreenBG} 等待时间同步 ${Font}"
+    sleep 10
+
+    chronyc sourcestats -v
+    chronyc tracking -v
+    date
+    read -p "请确认时间是否准确,误差范围±3分钟(Y/N): " chrony_install
+    [[ -z ${chrony_install} ]] && chrony_install="Y"
+    case $chrony_install in
+        [yY][eE][sS]|[yY])
+            echo -e "${GreenBG} 继续安装 ${Font}"
+            sleep 2
+            ;;
+        *)
+            echo -e "${RedBG} 安装终止 ${Font}"
+            exit 2
+            ;;
+    esac
 }
 
 #安装v2ray主程序
