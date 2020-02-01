@@ -21,8 +21,9 @@ apt -y update; wget -N https://raw.githubusercontent.com/bakuniverse/V2Ray_ws-tl
 apt -y update; wget -N https://raw.githubusercontent.com/bakuniverse/V2Ray_ws-tls_Website_onekey/master/h.sh && bash h.sh
 ```
 [新手请使用 Debian8 纯净系统安装]
-
+```
 bash <(wget --no-check-certificate -qO- https://github.com/bakuniverse/lotServer/raw/master/Install.sh) install
+```
 备用1：一键更换新的 UUID
 ```
 bash v.sh -n
