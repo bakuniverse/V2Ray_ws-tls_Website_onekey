@@ -356,7 +356,7 @@ nginx_install(){
         sed -i '$i include conf.d/*.conf;' /etc/nginx/nginx.conf
 	sed -i 's/events/worker_rlimit_nofile 52000;\nevents/g' /etc/nginx/nginx.conf
         sed -i 's/worker_connections  1024/worker_connections  50005/g' /etc/nginx/nginx.conf
-	systemctl restart nginx
+	
 
 
 	  if [[ -d /etc/nginx ]];then
