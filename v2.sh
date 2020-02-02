@@ -460,7 +460,7 @@ nginx_conf_add(){
 	server {
 		listen 80;
 		server_name SETSERVER.COM;
-		return 301 https://SETSERVER.COM:SETPORT443;
+		return 301 https://SETSERVER.COM$request_uri;
 	}
 EOF
 
