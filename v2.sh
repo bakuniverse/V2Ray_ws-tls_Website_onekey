@@ -636,15 +636,15 @@ systemd_add(){
 	cat <<EOF > /etc/systemd/system/nginx.service
 [Unit]
 Description=A high performance web server and a reverse proxy server
-After=network.target
+After=syslog.target network.target remote-fs.target nss-lookup.target
 
 [Service]
 Type=forking
 PIDFile=/etc/nginx/logs/nginx.pid
-ExecStartPre=/usr/sbin/nginx -t -q -g 'daemon on; master_process on;'
-ExecStart=/usr/sbin/nginx -g 'daemon on; master_process on;'
-ExecReload=/usr/sbin/nginx -g 'daemon on; master_process on;' -s reload
-ExecStop=-/sbin/start-stop-daemon --quiet --stop --retry QUIT/5 --pidfile /etc/nginx/logs/nginx.pid
+ExecStartPre=/usr/sbin/nginx -t
+ExecStart=/usr/sbin/nginx -c ${nginx_dir}/conf/nginx.conf
+ExecReload=/usr/sbin/nginx -s reload
+ExecStop=/bin/kill -s QUIT \$MAINPID
 TimeoutStopSec=5
 KillMode=mixed
 
