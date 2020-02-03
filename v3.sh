@@ -260,7 +260,6 @@ modify_nginx_other(){
     sed -i "/proxy_pass/c \\\tproxy_pass http://127.0.0.1:${PORT};" ${nginx_conf}
     sed -i "/return/c \\\treturn 301 https://${domain}\$request_uri;" ${nginx_conf}
     #sed -i "27i \\\tproxy_intercept_errors on;"  ${nginx_dir}/conf/nginx.conf
-    sed -i "s/SETHEADER/${hostheader}/g" ${basic_information}
 }
 web_camouflage(){
     ##请注意 这里和LNMP脚本的默认路径冲突，千万不要在安装了LNMP的环境下使用本脚本，否则后果自负
@@ -552,7 +551,7 @@ basic_information(){
     echo -e "${Red} 传输协议（network）：${Font} $(info_extraction "net") " >> ${v2ray_info_file}
     echo -e "${Red} 伪装类型（type）：${Font} none " >> ${v2ray_info_file}
     echo -e "${Red} 路径（不要落下/）：${Font} $(info_extraction "path") " >> ${v2ray_info_file}
-    echo -e "${Green} Website 伪装站点：${Font} https://${domain}:${port}">> ${v2ray_info_file}
+    echo -e "${Green} 伪装域名（适用于 旧版v2rayNG）：${Font} /;www.${hostheader}.com">> ${v2ray_info_file}
     echo -e "${Red} 底层传输安全：${Font} tls " >> ${v2ray_info_file}
 }
 show_information(){
