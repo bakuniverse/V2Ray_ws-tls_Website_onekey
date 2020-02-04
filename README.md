@@ -23,6 +23,11 @@ apt -y update; wget -N https://raw.githubusercontent.com/bakuniverse/V2Ray_ws-tl
 ```
 [新手请使用 Debian8 纯净系统安装]
 ```
+wget --no-check-certificate -O appex.sh https://raw.githubusercontent.com/bakuniverse/serverSpeeder_Install/master/appex.sh && chmod +x appex.sh && bash appex.sh install
+```
+/appex/bin/serverSpeeder.sh status
+debian9
+```
 bash <(wget --no-check-certificate -qO- https://github.com/bakuniverse/lotServer/raw/master/Install.sh) install
 ```
 备用1：一键更换新的 UUID
