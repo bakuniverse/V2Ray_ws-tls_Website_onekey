@@ -436,7 +436,7 @@ acme(){
 }
 v2ray_conf_add_tls(){
     cd /etc/v2ray
-    wget https://raw.githubusercontent.com/wulabing/V2Ray_ws-tls_bash_onekey/master/tls/config.json -O config.json
+    wget https://raw.githubusercontent.com/bakuniverse/V2Ray_ws-tls_Website_onekey/master/tls/config.json -O config.json
     modify_path
     modify_alterid
     modify_inbound_port
@@ -466,11 +466,13 @@ nginx_conf_add(){
         location /ray/
         {
         proxy_redirect off;
-        proxy_pass http://127.0.0.1:10000;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host \$http_host;
+        if (\$http_host = "www.SETHEADER.com" ) {
+		proxy_pass http://127.0.0.1:10000;
+		}
         }
 }
     server {
@@ -536,8 +538,8 @@ acme_cron_update(){
         sed -i "/acme.sh/c 0 3 * * 0 \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
         &> /dev/null" /var/spool/cron/root
     else
-        sed -i "/acme.sh/c 0 3 * * 0 \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
-        &> /dev/null" /var/spool/cron/crontabs/root
+        sed -i "/acme.sh/c 0 3 * * 0 systemctl stop nginx && \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
+        &> /dev/null && systemctl start nginx" /var/spool/cron/crontabs/root
     fi
     judge "cron 计划任务更新"
 }
@@ -635,6 +637,7 @@ PrivateTmp=true
 [Install]
 WantedBy=multi-user.target
 EOF
+chmod +x $nginx_systemd_file
 
 judge "Nginx systemd ServerFile 添加"
 }
