@@ -291,7 +291,6 @@ v2ray_install(){
         exit 4
     fi
     # 清除临时文件
-    rm -rf /root/v2ray
 }
 nginx_exist_check(){
     if [[ -f "/etc/nginx/sbin/nginx" ]];then
@@ -424,8 +423,7 @@ acme(){
     if [[ $? -eq 0 ]];then
         echo -e "${OK} ${GreenBG} SSL 证书生成成功 ${Font}"
         sleep 2
-        mkdir /data
-        ~/.acme.sh/acme.sh --installcert -d ${domain} --fullchainpath /data/v2ray.crt --keypath /data/v2ray.key --ecc
+        ~/.acme.sh/acme.sh --installcert -d ${domain} --fullchainpath /etc/v2ray/v2ray.crt --keypath /etc/v2ray/v2ray.key --ecc
         if [[ $? -eq 0 ]];then
         echo -e "${OK} ${GreenBG} 证书配置成功 ${Font}"
         sleep 2
@@ -457,13 +455,13 @@ nginx_conf_add(){
     cat>${nginx_conf_dir}/v2ray.conf<<EOF
     server {
         listen 443 ssl http2;
-        ssl_certificate       /data/v2ray.crt;
-        ssl_certificate_key   /data/v2ray.key;
+        ssl_certificate       /etc/v2ray/v2ray.crt;
+        ssl_certificate_key   /etc/v2ray/v2ray.key;
         ssl_protocols         TLSv1.2 TLSv1.3;
         ssl_ciphers           TLS13-AES-256-GCM-SHA384:TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-128-GCM-SHA256:TLS13-AES-128-CCM-8-SHA256:TLS13-AES-128-CCM-SHA256:EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
         server_name           serveraddr.com;
         index index.html index.htm;
-        root  /home/wwwroot/3DCEList;
+        root  /home/wwwroot;
         error_page 400 = /400.html;
         location /ray/
         {
@@ -613,7 +611,7 @@ ssl_judge_and_install(){
 #        echo "证书文件已存在"
     if [[ -f "~/.acme.sh/${domain}_ecc/${domain}.key" && -f "~/.acme.sh/${domain}_ecc/${domain}.cer" ]];then
         echo "证书文件已存在"
-        ~/.acme.sh/acme.sh --installcert -d ${domain} --fullchainpath /data/v2ray.crt --keypath /data/v2ray.key --ecc
+        ~/.acme.sh/acme.sh --installcert -d ${domain} --fullchainpath /etc/v2ray/v2ray.crt --keypath /etc/v2ray/v2ray.key --ecc
         judge "证书应用"
     else
         ssl_install
@@ -683,7 +681,23 @@ bbr_boost_sh(){
 mtproxy_sh(){
     wget -N --no-check-certificate https://github.com/whunt1/onekeymakemtg/raw/master/mtproxy_go.sh && chmod +x mtproxy_go.sh && bash mtproxy_go.sh
 }
-
+#设置定时升级任务
+modify_crontab(){
+	echo -e "${OK} ${GreenBG} 配置每天凌晨自动升级V2ray内核任务 ${Font}"
+	sleep 2
+	#crontab -l >> crontab.txt
+	echo "20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart" >> crontab.txt
+	echo "30 12 * * * /sbin/reboot" >> crontab.txt
+	echo "29 */3 * * * systemctl restart nginx" >> crontab.txt
+	crontab crontab.txt
+	sleep 2
+	if [[ "${ID}" == "centos" ]];then
+		systemctl restart crond
+	else
+		systemctl restart cron
+	fi
+	rm -f crontab.txt
+}
 uninstall_all(){
     stop_process_systemd
     [[ -f $nginx_systemd_file ]] && rm -f $nginx_systemd_file
@@ -731,6 +745,7 @@ install_v2ray_ws_tls(){
     start_process_systemd
     enable_process_systemd
     acme_cron_update
+    modify_crontab
 }
 install_v2_h2(){
     is_root
