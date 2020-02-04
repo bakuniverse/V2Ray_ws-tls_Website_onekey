@@ -47,6 +47,7 @@ openssl_version="1.1.1d"
 
 #生成伪装路径
 camouflage=`cat /dev/urandom | head -n 10 | md5sum | head -c 8`
+hostheader=`cat /dev/urandom | head -n 10 | md5sum | head -c 8`
 
 source /etc/os-release
 
@@ -243,12 +244,14 @@ modify_inbound_port(){
 modify_UUID(){
     [ -z $UUID ] && UUID=$(cat /proc/sys/kernel/random/uuid)
     sed -i "/\"id\"/c \\\t  \"id\":\"${UUID}\"," ${v2ray_conf}
+    sed -i "s/SETHEADER/${hostheader}/g" ${v2ray_conf}
     judge "V2ray UUID 修改"
     [ -f ${v2ray_qr_config_file} ] && sed -i "/\"id\"/c \\  \"id\": \"${UUID}\"," ${v2ray_qr_config_file}
     echo -e "${GreenBG} UUID:${UUID} ${Font}"
 }
 modify_nginx_port(){
     sed -i "/ssl http2;$/c \\\tlisten ${port} ssl http2;" ${nginx_conf}
+    sed -i "s/SETHEADER/${hostheader}/g" ${nginx_conf}
     judge "V2ray port 修改"
     [ -f ${v2ray_qr_config_file} ] && sed -i "/\"port\"/c \\  \"port\": \"${port}\"," ${v2ray_qr_config_file}
     echo -e "${GreenBG} 端口号:${port} ${Font}"
@@ -595,6 +598,7 @@ basic_information(){
     echo -e "${Red} 传输协议（network）：${Font} $(info_extraction "net") " >> ${v2ray_info_file}
     echo -e "${Red} 伪装类型（type）：${Font} none " >> ${v2ray_info_file}
     echo -e "${Red} 路径（不要落下/）：${Font} $(info_extraction "path") " >> ${v2ray_info_file}
+    echo -e "${Green} 伪装域名（适用于 旧版v2rayNG）：${Font} /;www.${hostheader}.com">> ${v2ray_info_file}
     echo -e "${Red} 底层传输安全：${Font} tls " >> ${v2ray_info_file}
 }
 show_information(){
