@@ -11,6 +11,7 @@
  修复证书无法正常自动更新的bug
  
    ```
+  systemctl daemon-reload
   systemctl start nginx	
  ```
 
