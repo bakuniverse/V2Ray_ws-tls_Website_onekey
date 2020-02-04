@@ -222,7 +222,7 @@ port_alterid_set(){
     [[ -z ${alterID} ]] && alterID="64"
 }
 modify_path(){
-    sed -i "/\"path\"/c \\\t  \"path\":\"\/${camouflage}\/\"" ${v2ray_conf}
+    sed -i "/\"path\"/c \\\t  \"path\":\"\/${camouflage}\/\"," ${v2ray_conf}
     judge "V2ray 伪装路径 修改"
 }
 modify_alterid(){
