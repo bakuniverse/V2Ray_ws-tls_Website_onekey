@@ -23,7 +23,7 @@
         "wsSettings": {
          "path": "/e01ec5ea/",
          "headers": {
-	    "host": "SETHEADER"
+	    "host": "www.SETHEADER.com"
 	}
         }
       }
