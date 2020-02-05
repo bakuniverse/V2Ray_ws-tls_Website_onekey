@@ -14,7 +14,7 @@
         "clients": [
           {
             "id": "3f3effce-2640-4f29-b95b-a2106df6d96d",
-		  "security": "auto",
+	    "security": "auto",
             "alterId": 64
           }
         ]
