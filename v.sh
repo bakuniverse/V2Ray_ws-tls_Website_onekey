@@ -28,6 +28,7 @@ v2ray_user="${v2ray_conf_dir}/user.json"
 nginx_conf="${nginx_conf_dir}/v2ray.conf"
 nginx_dir="/etc/nginx"
 nginx_openssl_src="/usr/local/src"
+nginx_systemd_file="/etc/systemd/system/nginx.service"
 nginx_version="1.16.1"
 openssl_version="1.1.1d"
 
@@ -696,7 +697,26 @@ show_information(){
 	fi
 	echo -e "----------------------------------------------------------"
 }
+nginx_systemd(){
+    cat>$nginx_systemd_file<<EOF
+[Unit]
+Description=The NGINX HTTP and reverse proxy server
+After=syslog.target network.target remote-fs.target nss-lookup.target
+[Service]
+Type=forking
+PIDFile=/etc/nginx/logs/nginx.pid
+ExecStartPre=/etc/nginx/sbin/nginx -t
+ExecStart=/etc/nginx/sbin/nginx -c ${nginx_dir}/conf/nginx.conf
+ExecReload=/etc/nginx/sbin/nginx -s reload
+ExecStop=/bin/kill -s QUIT \$MAINPID
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target
+EOF
+chmod +x $nginx_systemd_file
 
+judge "Nginx systemd ServerFile 添加"
+}
 #命令块执行列表
 main_sslon(){
 	is_root
@@ -714,6 +734,7 @@ main_sslon(){
 	ssl_install
 	acme
 	nginx_install
+	nginx_systemd
 	web_install
 	v2ray_conf_add
 	nginx_conf_add
@@ -738,6 +759,7 @@ main_ssloff(){
 	modify_crontab
 	ssl_install
 	nginx_install
+	nginx_systemd
 	web_install
 	v2ray_conf_add
 	nginx_conf_add
