@@ -643,6 +643,8 @@ modify_nginx(){
 	sed -i "s/SETPORTV/${PORT}/g" "${nginx_conf}"
 	sed -i "s/SETSERVER.COM/${domain}/g" "${nginx_conf}"
 	sed -i "s/SETHEADER/${hostheader}/g" "${nginx_conf}"
+	sed -i 's/worker_connections  1024;/worker_connections  520000;/' {nginx_dir}/nginx.conf
+	sed -i 's/events/worker_rlimit_nofile 520000;\nevents/' {nginx_dir}/nginx.conf
 }
 
 #修正客户端json配置文件
@@ -721,10 +723,10 @@ Description=The NGINX HTTP and reverse proxy server
 After=syslog.target network.target remote-fs.target nss-lookup.target
 [Service]
 Type=forking
-PIDFile=/etc/nginx/logs/nginx.pid
-ExecStartPre=/etc/nginx/sbin/nginx -t
-ExecStart=/etc/nginx/sbin/nginx -c ${nginx_dir}/conf/nginx.conf
-ExecReload=/etc/nginx/sbin/nginx -s reload
+PIDFile=/var/run/nginx.pid
+ExecStartPre=/usr/sbin/nginx -t
+ExecStart=/usr/sbin/nginx -c ${nginx_dir}/conf/nginx.conf
+ExecReload=/usr/sbin/nginx -s reload
 ExecStop=/bin/kill -s QUIT \$MAINPID
 PrivateTmp=true
 [Install]
