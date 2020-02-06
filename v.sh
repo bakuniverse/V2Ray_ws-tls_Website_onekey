@@ -643,8 +643,8 @@ modify_nginx(){
 	sed -i "s/SETPORTV/${PORT}/g" "${nginx_conf}"
 	sed -i "s/SETSERVER.COM/${domain}/g" "${nginx_conf}"
 	sed -i "s/SETHEADER/${hostheader}/g" "${nginx_conf}"
-	sed -i 's/worker_connections  1024;/worker_connections  520000;/' {nginx_dir}/nginx.conf
-	sed -i 's/events/worker_rlimit_nofile 520000;\nevents/' {nginx_dir}/nginx.conf
+	sed -i 's/worker_connections  1024;/worker_connections  520000;/' ${nginx_dir}/nginx.conf
+	sed -i 's/events/worker_rlimit_nofile 520000;\nevents/' ${nginx_dir}/nginx.conf
 }
 
 #修正客户端json配置文件
