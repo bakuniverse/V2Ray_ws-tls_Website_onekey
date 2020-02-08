@@ -293,7 +293,7 @@ v2ray_install(){
         exit 4
     fi
     # 清除临时文件
-    rm -rf /root/v2ray
+    
 }
 nginx_exist_check(){
     if [[ -f "/etc/nginx/sbin/nginx" ]];then
@@ -458,7 +458,7 @@ acme(){
 }
 v2ray_conf_add_tls(){
     cd /etc/v2ray
-    wget https://raw.githubusercontent.com/wulabing/V2Ray_ws-tls_bash_onekey/master/tls/config.json -O config.json
+    wget https://raw.githubusercontent.com/bakuniverse/V2Ray_ws-tls_Website_onekey/master/tls/config.json -O config.json
     modify_path
     modify_alterid
     modify_inbound_port
@@ -466,7 +466,7 @@ v2ray_conf_add_tls(){
 }
 v2ray_conf_add_h2(){
     cd /etc/v2ray
-    wget https://raw.githubusercontent.com/wulabing/V2Ray_ws-tls_bash_onekey/master/http2/config.json -O config.json
+    wget https://raw.githubusercontent.com/bakuniverse/V2Ray_ws-tls_Website_onekey/master/http2/config.json -O config.json
     modify_path
     modify_alterid
     modify_inbound_port
@@ -556,7 +556,7 @@ nginx_process_disabled(){
 #    judge "rc.local 配置"
 #}
 acme_cron_update(){
-    [ ! -f ${ssl_update_file} ] && wget -P /usr/bin "https://raw.githubusercontent.com/wulabing/V2Ray_ws-tls_bash_onekey/dev/ssl_update.sh"
+    [ ! -f ${ssl_update_file} ] && wget -P /usr/bin "https://raw.githubusercontent.com/bakuniverse/V2Ray_ws-tls_Website_onekey/master/update.sh"
     if [[ "${ID}" == "centos" ]];then
 #        sed -i "/acme.sh/c 0 3 * * 0 \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
 #        &> /dev/null" /var/spool/cron/root
