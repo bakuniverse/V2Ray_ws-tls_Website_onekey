@@ -6,6 +6,13 @@
     },
   "inbounds": [
     {
+	"sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls"
+        ]
+      },
       "port": 10086, 
       "listen": "127.0.0.1", 
       "tag": "vmess-in", 
