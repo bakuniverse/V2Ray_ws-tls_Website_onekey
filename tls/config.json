@@ -68,6 +68,13 @@
           "vmess-in"
         ], 
         "outboundTag": "direct"
+      },
+ {
+        "type": "field",
+        "outboundTag": "block",
+        "protocol": [
+          "bittorrent"
+        ]
       }
     ]
   }
