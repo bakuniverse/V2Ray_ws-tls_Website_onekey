@@ -344,7 +344,8 @@ nginx_install(){
     sleep 4
 
     cd ../nginx-${nginx_version}
-    ./configure --prefix="${nginx_dir}"                         \
+    ./configure  --user=www --group=www \
+            --prefix="${nginx_dir}"                         \
             --with-http_ssl_module                              \
             --with-http_gzip_static_module                      \
             --with-http_stub_status_module                      \
@@ -361,7 +362,7 @@ nginx_install(){
     judge "Nginx 编译安装"
 
     # 修改基本配置
-    sed -i 's/#user  nobody;/user  root;/' ${nginx_dir}/conf/nginx.conf
+    # sed -i 's/#user  nobody;/user  root;/' ${nginx_dir}/conf/nginx.conf
     sed -i 's/worker_processes  1;/worker_processes  3;/' ${nginx_dir}/conf/nginx.conf
     sed -i 's/    worker_connections  1024;/    worker_connections  4096;/' ${nginx_dir}/conf/nginx.conf
     sed -i '$i include conf.d/*.conf;' ${nginx_dir}/conf/nginx.conf
