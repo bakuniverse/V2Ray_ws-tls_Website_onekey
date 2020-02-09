@@ -509,16 +509,6 @@ nginx_process_disabled(){
 #
 #    judge "rc.local 配置"
 #}
-acme_cron_update(){
-    if [[ "${ID}" == "centos" ]];then
-        sed -i "/acme.sh/c 0 3 * * 0 \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
-        &> /dev/null" /var/spool/cron/root
-    else
-        sed -i "/acme.sh/c 0 3 * * 0 systemctl stop nginx && \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
-        &> /dev/null && systemctl start nginx" /var/spool/cron/crontabs/root
-    fi
-    judge "cron 计划任务更新"
-}
 
 vmess_qr_config_tls_ws(){
     cat > $v2ray_qr_config_file <<-EOF
@@ -658,13 +648,19 @@ mtproxy_sh(){
     wget -N --no-check-certificate https://github.com/whunt1/onekeymakemtg/raw/master/mtproxy_go.sh && chmod +x mtproxy_go.sh && bash mtproxy_go.sh
 }
 #设置定时升级任务
-modify_crontab(){
+acme_cron_update(){
 	echo -e "${OK} ${GreenBG} 配置每天凌晨自动升级V2ray内核任务 ${Font}"
 	sleep 2
 	#crontab -l >> crontab.txt
-	echo "20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart" >> crontab.txt
-	echo "30 12 * * * /sbin/reboot" >> crontab.txt
-	echo "29 */3 * * * systemctl restart nginx" >> crontab.txt
+cat>$HOME/crontab.txt<<EOF
+20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart
+0 3 * * * systemctl stop nginx && "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh" > /dev/null && systemctl start nginx
+30 12 * * * /sbin/reboot
+29 */3 * * * systemctl restart nginx
+1 0 * * 0 rm -rf /var/log/v2ray/access.log
+2 0 * * 0 rm -rf /var/log/v2ray/error.log
+EOF
+        sleep 2
 	crontab crontab.txt
 	sleep 2
 	if [[ "${ID}" == "centos" ]];then
@@ -673,6 +669,7 @@ modify_crontab(){
 		systemctl restart cron
 	fi
 	rm -f crontab.txt
+	judge "cron 计划任务更新"
 }
 uninstall_all(){
     stop_process_systemd
@@ -721,7 +718,6 @@ install_v2ray_ws_tls(){
     start_process_systemd
     enable_process_systemd
     acme_cron_update
-    modify_crontab
 }
 install_v2_h2(){
     is_root
