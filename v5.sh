@@ -653,7 +653,7 @@ acme_cron_update(){
 	sleep 2
 	#crontab -l >> crontab.txt
 cat>$HOME/crontab.txt<<EOF
-20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart
+20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && systemctl restart v2ray
 0 3 * * * systemctl stop nginx && "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh" > /dev/null && systemctl start nginx
 30 12 * * * /sbin/reboot
 29 */3 * * * systemctl restart nginx
