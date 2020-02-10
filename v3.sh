@@ -365,8 +365,13 @@ nginx_install(){
     judge "编译检查"
     make && make install
     judge "Nginx 编译安装"
+    
+    # 添加用户
+    /usr/sbin/groupadd -f www
+    /usr/sbin/useradd -g www www
 
     # 修改基本配置
+    sed -i 's/#user  nobody;/user  www;/' ${nginx_dir}/conf/nginx.conf
     sed -i 's/worker_processes  1;/worker_processes  3;/' ${nginx_dir}/conf/nginx.conf
     sed -i 's/    worker_connections  1024;/    worker_connections  4096;/' ${nginx_dir}/conf/nginx.conf
     sed -i '$i include conf.d/*.conf;' ${nginx_dir}/conf/nginx.conf
