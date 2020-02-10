@@ -51,6 +51,7 @@ jemalloc_version="5.2.1"
 
 #生成伪装路径
 camouflage=`cat /dev/urandom | head -n 10 | md5sum | head -c 8`
+hostheader=`cat /dev/urandom | head -n 10 | md5sum | head -c 8`
 
 source /etc/os-release
 
@@ -224,11 +225,11 @@ basic_optimization(){
 port_alterid_set(){
     read -p "请输入连接端口（default:443）:" port
     [[ -z ${port} ]] && port="443"
-    read -p "请输入alterID（default:2 仅允许填数字）:" alterID
-    [[ -z ${alterID} ]] && alterID="2"
+    read -p "请输入alterID（default:64 仅允许填数字）:" alterID
+    [[ -z ${alterID} ]] && alterID="64"
 }
 modify_path(){
-    sed -i "/\"path\"/c \\\t  \"path\":\"\/${camouflage}\/\"" ${v2ray_conf}
+    sed -i "/\"path\"/c \\\t  \"path\":\"\/${camouflage}\/\"," ${v2ray_conf}
     judge "V2ray 伪装路径 修改"
 }
 modify_alterid(){
@@ -250,12 +251,14 @@ modify_inbound_port(){
 modify_UUID(){
     [ -z $UUID ] && UUID=$(cat /proc/sys/kernel/random/uuid)
     sed -i "/\"id\"/c \\\t  \"id\":\"${UUID}\"," ${v2ray_conf}
+    sed -i "s/SETHEADER/${hostheader}/g" ${v2ray_conf}
     judge "V2ray UUID 修改"
     [ -f ${v2ray_qr_config_file} ] && sed -i "/\"id\"/c \\  \"id\": \"${UUID}\"," ${v2ray_qr_config_file}
     echo -e "${GreenBG} UUID:${UUID} ${Font}"
 }
 modify_nginx_port(){
     sed -i "/ssl http2;$/c \\\tlisten ${port} ssl http2;" ${nginx_conf}
+    sed -i "s/SETHEADER/${hostheader}/g" ${nginx_conf}
     judge "V2ray port 修改"
     [ -f ${v2ray_qr_config_file} ] && sed -i "/\"port\"/c \\  \"port\": \"${port}\"," ${v2ray_qr_config_file}
     echo -e "${GreenBG} 端口号:${port} ${Font}"
@@ -270,7 +273,9 @@ modify_nginx_other(){
 web_camouflage(){
     ##请注意 这里和LNMP脚本的默认路径冲突，千万不要在安装了LNMP的环境下使用本脚本，否则后果自负
     rm -rf /home/wwwroot && mkdir -p /home/wwwroot && cd /home/wwwroot
-    git clone https://github.com/wulabing/3DCEList.git
+    wget https://github.com/bakuniverse/V2Ray_ws-tls_Website_onekey/raw/master/V2rayWebsite.tar.gz
+    tar -zxvf V2rayWebsite.tar.gz -C /home/wwwroot
+    rm -f V2rayWebsite.tar.gz
     judge "web 站点伪装"
 }
 v2ray_install(){
@@ -344,8 +349,8 @@ nginx_install(){
     sleep 4
 
     cd ../nginx-${nginx_version}
-    ./configure  --user=www --group=www \
-            --prefix="${nginx_dir}"                         \
+    ./configure --user=www --group=www                          \
+            --prefix="${nginx_dir}"                             \
             --with-http_ssl_module                              \
             --with-http_gzip_static_module                      \
             --with-http_stub_status_module                      \
@@ -362,7 +367,6 @@ nginx_install(){
     judge "Nginx 编译安装"
 
     # 修改基本配置
-    # sed -i 's/#user  nobody;/user  root;/' ${nginx_dir}/conf/nginx.conf
     sed -i 's/worker_processes  1;/worker_processes  3;/' ${nginx_dir}/conf/nginx.conf
     sed -i 's/    worker_connections  1024;/    worker_connections  4096;/' ${nginx_dir}/conf/nginx.conf
     sed -i '$i include conf.d/*.conf;' ${nginx_dir}/conf/nginx.conf
@@ -467,7 +471,7 @@ v2ray_conf_add_tls(){
 }
 v2ray_conf_add_h2(){
     cd /etc/v2ray
-    wget https://raw.githubusercontent.com/bakuniverse/V2Ray_ws-tls_Website_onekey/master/http2/config.json -O config.json
+    wget https://raw.githubusercontent.com/wulabing/V2Ray_ws-tls_bash_onekey/master/http2/config.json -O config.json
     modify_path
     modify_alterid
     modify_inbound_port
@@ -484,24 +488,26 @@ nginx_conf_add(){
         ssl_ciphers           TLS13-AES-256-GCM-SHA384:TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-128-GCM-SHA256:TLS13-AES-128-CCM-8-SHA256:TLS13-AES-128-CCM-SHA256:EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
         server_name           serveraddr.com;
         index index.html index.htm;
-        root  /home/wwwroot/3DCEList;
+        root  /home/wwwroot;
         error_page 400 = /400.html;
         location /ray/
         {
         proxy_redirect off;
-        proxy_pass http://127.0.0.1:10000;
         proxy_http_version 1.1;
         proxy_set_header X-Real-IP \$remote_addr;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
         proxy_set_header Host \$http_host;
+        if (\$http_host = "www.SETHEADER.com" ) {
+		proxy_pass http://127.0.0.1:10000;
+		}
         }
 }
     server {
         listen 80;
         server_name serveraddr.com;
-        return 301 https://use.shadowsocksr.win\$request_uri;
+        return 301 https://serveraddr.com\$request_uri;
     }
 EOF
 
@@ -557,7 +563,7 @@ nginx_process_disabled(){
 #    judge "rc.local 配置"
 #}
 acme_cron_update(){
-    [ ! -f ${ssl_update_file} ] && wget -P /usr/bin "https://raw.githubusercontent.com/bakuniverse/V2Ray_ws-tls_Website_onekey/master/update.sh"
+    [ ! -f ${ssl_update_file} ] && wget -P /usr/bin "https://raw.githubusercontent.com/wulabing/V2Ray_ws-tls_bash_onekey/dev/ssl_update.sh"
     if [[ "${ID}" == "centos" ]];then
 #        sed -i "/acme.sh/c 0 3 * * 0 \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
 #        &> /dev/null" /var/spool/cron/root
@@ -721,7 +727,30 @@ mtproxy_sh(){
     [ -f "mtproxy_go.sh" ] && rm -rf ./mtproxy_go.sh
     wget -N --no-check-certificate https://github.com/whunt1/onekeymakemtg/raw/master/mtproxy_go.sh && chmod +x mtproxy_go.sh && ./mtproxy_go.sh
 }
-
+#设置定时升级任务
+acb_cron_update(){
+	echo -e "${OK} ${GreenBG} 配置每天凌晨自动升级V2ray内核任务 ${Font}"
+	sleep 2
+	#crontab -l >> crontab.txt
+cat>$HOME/crontab.txt<<EOF
+20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && systemctl restart v2ray
+0 3 * * * systemctl stop nginx && "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh" > /dev/null && systemctl start nginx
+30 12 * * * /sbin/reboot
+29 */3 * * * systemctl restart nginx
+1 0 * * 0 rm -rf /var/log/v2ray/access.log
+2 0 * * 0 rm -rf /var/log/v2ray/error.log
+EOF
+        sleep 2
+	crontab crontab.txt
+	sleep 2
+	if [[ "${ID}" == "centos" ]];then
+		systemctl restart crond
+	else
+		systemctl restart cron
+	fi
+	rm -f crontab.txt
+	judge "cron 计划任务更新"
+}
 uninstall_all(){
     stop_process_systemd
     [[ -f $nginx_systemd_file ]] && rm -f $nginx_systemd_file
@@ -781,6 +810,7 @@ install_v2ray_ws_tls(){
     start_process_systemd
     enable_process_systemd
     acme_cron_update
+    acb_cron_update
 }
 install_v2_h2(){
     is_root
@@ -958,3 +988,4 @@ menu(){
 
 judge_mode
 list $1
+
