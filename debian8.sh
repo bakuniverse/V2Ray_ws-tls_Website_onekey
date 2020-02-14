@@ -364,6 +364,7 @@ v2ray_conf_add(){
   "inbound": {
 	"port": SETPORTV,
 	"listen": "127.0.0.1",
+	"tag": "vmess-in",
 	"protocol": "vmess",
 	"settings": {
 	  "clients": [
@@ -373,6 +374,13 @@ v2ray_conf_add(){
 		}
 	  ]
 	},
+	"sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls"
+        ]
+      },
 	"streamSettings": {
 	  "network": "ws",
 	  "wsSettings": {
@@ -386,6 +394,35 @@ v2ray_conf_add(){
   "outbound": {
 	"protocol": "freedom",
 	"settings": {}
+  },
+    "dns": {
+    "servers": [
+      "https+local://1.1.1.1/dns-query",
+	"1.1.1.1",
+	"1.0.0.1",
+	"8.8.8.8",
+	"8.8.4.4",
+	"localhost"
+    ]
+  },
+ "routing": {
+    "domainStrategy": "AsIs", 
+    "rules": [
+      {
+        "type": "field", 
+        "inboundTag": [
+          "vmess-in"
+        ], 
+        "outboundTag": "direct"
+      },
+ {
+        "type": "field",
+        "outboundTag": "block",
+        "protocol": [
+          "bittorrent"
+        ]
+      }
+    ]
   }
 }
 EOF
@@ -403,17 +440,17 @@ nginx_conf_add(){
 		server_name			SETSERVER.COM;
 		ssl_certificate		/etc/v2ray/v2ray.crt;
 		ssl_certificate_key	/etc/v2ray/v2ray.key;
-		ssl_protocols		TLSv1 TLSv1.1 TLSv1.2;
+		ssl_protocols		TLSv1.1 TLSv1.2 TLSv3;
 		ssl_prefer_server_ciphers on;
 		ssl_ciphers		ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS;
 		ssl_stapling on;  #开启OCSP Stapling
                 ssl_stapling_verify on;
                 resolver 8.8.8.8 8.8.4.4 valid=300s;            
                 resolver_timeout 10s;
-                ssl_buffer_size 8k;
+                ssl_buffer_size 1369k;
                 ssl_session_tickets on;
                 ssl_session_cache shared:SSL:20m;
-                ssl_session_timeout 10m;
+                ssl_session_timeout 60m;
 		ssl_trusted_certificate /etc/v2ray/v2ray.crt;
 		#开启HSTS务必保证所有子域名都已经配置好HTTPS，否则删除掉includeSubdomains
                 add_header Strict-Transport-Security "max-age=63072000; includeSubdomains; preload" always;
@@ -654,8 +691,7 @@ acme_cron_update(){
         sed -i "/acme.sh/c 0 3 * * 0 systemctl stop nginx && \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
         > /dev/null && systemctl start nginx " /var/spool/cron/root
     else
-        sed -i "/acme.sh/c 0 3 * * 0 systemctl stop nginx && \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
-        > /dev/null && systemctl start nginx " /var/spool/cron/crontabs/root
+        sed -i "/acme.sh/c 0 3 * * 0 systemctl stop nginx && \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \ > /dev/null && systemctl start nginx " /var/spool/cron/crontabs/root
     fi
     judge "cron 计划任务更新"
 }
