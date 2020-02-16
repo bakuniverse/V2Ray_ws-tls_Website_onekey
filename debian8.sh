@@ -41,8 +41,8 @@ v2ray_hello(){
 random_number(){
 	let PORT=$RANDOM+10000
 	UUID=$(cat /proc/sys/kernel/random/uuid)
-	camouflage=`cat /dev/urandom | head -n 10 | md5sum | head -c 8`
-	hostheader=`cat /dev/urandom | head -n 10 | md5sum | head -c 8`
+	camouflage=`cat /dev/urandom | head -n 10 | md5sum | head -c 9`
+	hostheader=`cat /dev/urandom | head -n 10 | md5sum | head -c 9`
 }
 
 #检测root权限
@@ -290,9 +290,9 @@ modify_crontab(){
 	echo -e "${OK} ${GreenBG} 配置每天凌晨自动升级V2ray内核任务 ${Font}"
 	sleep 2
 	#crontab -l >> crontab.txt
-	echo "20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart" >> crontab.txt
-	echo "30 12 * * * /sbin/reboot" >> crontab.txt
-	echo "29 */3 * * * systemctl restart nginx" >> crontab.txt
+	echo "20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart >/dev/null 2>&1" >> crontab.txt
+	echo "30 12 * * * /sbin/reboot >/dev/null 2>&1" >> crontab.txt
+	echo "29 */3 * * * systemctl restart nginx >/dev/null 2>&1" >> crontab.txt
 	crontab crontab.txt
 	sleep 2
 	if [[ "${ID}" == "centos" ]];then
@@ -361,7 +361,8 @@ v2ray_conf_add(){
 	touch ${v2ray_conf_dir}/config.json
 	cat <<EOF > ${v2ray_conf_dir}/config.json
 {
-  "inbound": {
+  "inbounds": [
+  {
 	"port": SETPORTV,
 	"listen": "127.0.0.1",
 	"tag": "vmess-in",
@@ -390,11 +391,20 @@ v2ray_conf_add(){
 	  }
 	  }
 	}
-  },
-  "outbound": {
+	}
+  ],
+  "outbounds": [
+  {
 	"protocol": "freedom",
-	"settings": {}
+	"settings": {},
+	"tag": "direct"	
   },
+   {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "block"
+    }
+],
     "dns": {
     "servers": [
       "https+local://1.1.1.1/dns-query",
