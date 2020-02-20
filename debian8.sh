@@ -520,7 +520,7 @@ user_config_add(){
 			"timeout": 360
 		},
 	"sniffing": {
-              "enable": true,
+              "enabled": true,
               "destOverride": ["http", "tls"]
     }		
 	},	
@@ -533,7 +533,7 @@ user_config_add(){
 			"settings": {
 				"auth": "noauth",
 				"ip": "127.0.0.1",
-				"udp": true
+				"udp": false
 			}
 		}
 	],
