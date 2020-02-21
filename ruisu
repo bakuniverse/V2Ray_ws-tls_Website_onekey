@@ -1,0 +1,187 @@
+内核参数优化
+1.增加系统文件描述符的最大限数
+编辑文件 limits.conf
+vi /etc/security/limits.conf
+最后新增两行添加命令：
+* soft nofile 51200
+* hard nofile 51200
+编辑文件 profile
+vi /etc/profile
+最后新增一行添加命令：
+ulimit -SHn 51200
+修改后重启，检查是否生效命令：ulimit -n
+
+2.调整内核参数
+修改配置文件sysctl.conf
+vi /etc/sysctl.conf
+最后新增一行添加命令：
+fs.file-max = 51200
+net.core.rmem_max = 67108864
+net.core.wmem_max = 67108864
+net.core.rmem_default = 65536
+net.core.wmem_default = 65536
+net.core.netdev_max_backlog = 4096
+net.core.somaxconn = 4096
+net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.tcp_tw_recycle = 0
+net.ipv4.tcp_fin_timeout = 30
+net.ipv4.tcp_keepalive_time = 1200
+net.ipv4.ip_local_port_range = 10000 65000
+net.ipv4.tcp_max_syn_backlog = 4096
+net.ipv4.tcp_max_tw_buckets = 5000
+net.ipv4.tcp_fastopen = 3
+net.ipv4.tcp_rmem = 4096 87380 67108864
+net.ipv4.tcp_wmem = 4096 65536 67108864
+net.ipv4.tcp_mtu_probing = 1
+net.ipv4.tcp_congestion_control = hybla
+修改后执行命令：sysctl -p 使配置生效。
+其中最后的hybla是为高延迟网络算法，欧美地区，需要内核支持，测试内核是否支持，
+执行命令：sysctl net.ipv4.tcp_available_congestion_control
+如果结果中有hybla，则证明你的内核已开启hybla，如果没有hybla，可以用命令modprobe tcp_hybla开启。
+对于低延迟的网络亚洲地区，可以使用htcp，有非常显著的提高速度，首先使用modprobe tcp_htcp开启，再将net.ipv4.tcp_congestion_control = hybla改为
+net.ipv4.tcp_congestion_control = htcp
+（高于平均ping 90ms用hybla，低于平均ping 100ms用htcp）
+
+修改锐速配置参数（很多人安装锐速后，没多少效果，主要就是没有修改锐速配置文件的核心参数。）
+以下要修改的参数可能你的VPS部分不支持，请看锐速各项参数的说明详解
+Bash
+vi /appex/etc/config
+所需要设置的各项参数如下
+acc=”1″
+advacc=”1″
+advinacc=”1″
+maxmode=”1″
+initialCwndWan=”44″
+l2wQLimit=”256 2048″
+w2lQLimit=”256 2048″
+shaperEnable=”0″
+SmBurstMS=”25″
+rsc=”1″
+gso=”1″
+engineNum=”0″
+shortRttMS=”60″
+initialCwndWan=”44″
+平均ping ms÷3=数值
+l2wQLimit=”256 2048″
+w2lQLimit=”256 2048″
+
+VPS内存	内存MB值	缓存KB值
+256M	256	2048
+512M	512	4096
+1G	1024	8192
+2G	2048	16384
+4G	4096	32768
+VPS内存MB×8=缓存数值
+SmBurstMS=”15″
+平均ping ms÷9=数值
+engineNum=”0″
+CPU核心 0=1核 1=2核 2=3核 3=4核，你的VPS是多少核心的就按这样以此类推。
+shortRttMS=”0″
+平均ping ms÷3=数值，最高100，再高也没啥效果了。
+
+锐速参数详细说明
+常用配置参数说明
+通过修改/serverspeeder/etc/config 文件，可以为 serverSpeeder 设定不同的配置参数；常用参数的说明如下：
+1) accif=”eth*”
+加速接口；eth* 一般为服务器上对外提供服务的网络接口，例如 eth0, eth1, … 一般通过 ifconfig 命令可以看到；可以同时设定多个接口作为加速接口(接口之间用空格分开)，如 accif="eth0 eth1"；默认为”eth0″.
+
+2) acc=”1″
+TCP 加速开关；设为 1 表示开启 serverSpeeder 的 TCP 加速功能；设为 0 表示关闭 serverSpeeder 的 TCP 加速功能；默认为 1.
+
+3) advacc=”1″
+高级加速开关；设为 1 表示开启，设为 0 表示关闭；开启此功能可以得到更好的加速效果，但有可能会造成有效数据率下降；默认为 1.
+
+4) advinacc=”0″
+高级入向加速开关；设为 1 表示开启，设为 0 表示关闭；开启此功能可以得到更好的流入方向流量加速效果；
+
+5) wankbps=”1000000″
+加速接口上行带宽；指的是从服务器流出到 Internet 的最大带宽，单位为 Kbps，例如服务器所连接的 Internet 带宽为 1G，则设置为 1000000；默认为 1000000.
+
+6) waninkbps=”1000000″
+加速接口下行带宽；指的是从 Internet 流入服务器的最大带宽，单位为 Kbps，例如服务器所连接的 Internet 带宽为 1G，则设置为 1000000；默认为 1000000；
+wankbps 和 waninkbps 的设置一般与实际带宽相同为最理想；如果无法确定实际带宽，一般设置为网卡的最大吞吐能力即可；例如网卡为千兆全双工网卡，则 wankbps 和 waninkbps 都设置为 1000000；
+当设置过小时，例如实际带宽有 100Mbps，但 wankbps 和 waninkbps 设置为 10Mbps，则数据流量会被限制在 10Mbps 以内，此时会降低服务器的吞吐。
+
+7) csvmode=”0″ highcsv=”0″
+csvmode 拥塞控制模式开关；设为 1 表示开启，设为 0 表示关闭；开启 tcp 加速后，在某些丢包较大的网络中可能会造成有效数据率下降的问题；此时开启拥塞控制模式，可以有效避免该问题；但开启此选项时，可能加速效果也会下降；默认为 0；
+csvmode="1" highcsv="0"时，为普通拥塞控制模式；对拥塞具有一定控制的同时对加速效果的影响较小；
+csvmode="1" highcsv="1"时，为高级拥塞控制模式，可以更好的控制拥塞但是相比于普通拥塞控制模式对加速效果的影响较大。
+
+8) subnetAcc=”0″
+局域网加速开关；设为 1 表示开启；设为 0 表示关闭；不开启时对于同一局域网内的连接不会加速；开启后对同一网段的 TCP 连接也进行加速；
+
+9) maxmode=”0″
+最大传输模式；设为 1 表示开启；设为 0 表示关闭；开启后会进一步提高加速效果，但是可能会降低有效数据率。
+
+10) maxTxEffectiveMS=”0”
+最大传输模式生效时间；用于控制最大传输模式对每一个连接的生效时间；设为 0 表示从连接建立到连接结束，都采用最大传输模式传输；单位为 ms，1000 即 1s.
+
+11) pcapEnable=“0”
+抓包开关；设为 1 表示开启，设为 0 表示关闭；开启此功能后会抓取经过加速引擎处理的数据包，在 /serverspeeder/log 目录下生成抓包文件。
+
+12) bypassOverFlows=”1″
+流量 bypass 开关；设为 1 表示开启，设为 0 表示关闭；开启此功能后当服务器的连接数超过引擎设定后会对超过的连接的流量 bypass，否则会无法新建连接。
+
+13) initialCwndWan=”44″
+初始 TCP 发送窗口能够发送的数据包的数量；该值设置的高会获得更好的加速效果，是可能会造成网络的拥塞。
+
+14) l2wQLimit=”256 2048″
+从 LAN 到 WAN 加速引擎在缓冲池充满和空闲时分别能够缓存的数据包队列的长度的上限；该值设置的高会获得更好的加速效果，但是会消耗更多的内存。
+
+15) w2lQLimit=”256 2048″
+从 WAN 到 LAN 加速引擎在缓冲池充满和空闲时分别能够缓存的数据包队列的长度的上限；该值设置的高会获得更好的加速效果，但是会消耗更多的内存。
+
+16) shrinkPacket=”0″
+slab 缓存缩减开关；设为 1 表示开启，设为 0 表示关闭；当服务器内存消耗很高时可以将该值设定为 1，这样会降低内存的消耗。
+
+17) retranWaitListMS=”32
+重传等待时间；当服务器没有收到 ack 或者丢包产生之后客户端重复 ack 时间达 到 32ms，服务器重传数据；默认为 32ms.
+
+18) halfCwndMinSRtt=”500″
+halfCwndLossRateShift=”3″
+以上两个值用于判断网络拥塞，分别为延时和丢包率，丢包率默认值为 3，即 1/2^3，当拥塞产生时，退出第三代 Learning-based TCP 算法，采用类似传统 TCP 的 算法。
+
+19)#byte cache
+byteCache=”0″
+httpComp=”1″
+byteCacheMemory=”250″ #MB
+byteCacheDisk=”0″ #MB
+diskDev=”/dev/sda2″
+以上为双边缓存的设置，当前只有部分版本支持该功能。分别是缓存开关，数据压缩开关，内存大小，硬盘大小，指定硬盘位置；
+
+20) shaperEnable=”1″
+流量整形开关，配合上行和下行带宽设置开启；设为 1 表示开启，设为 0 表示关闭；开启此功能，会采用 wankbps 以及 waninkbps 设置的带宽大小运行；关闭此功能，会根据实时传输自动测算带宽大小。
+
+21) tcpOnly=”1″
+设为 1 表示开启，设为 0 表示关闭；开启此功能，即只处理 TCP 流量；关闭此功能，也处理除 TCP 以外的流量（不会对非 TCP 流量加速），一般用于配置策略对非 TCP 数据丢弃时；
+
+22) SmBurstMS=”15″
+引擎允许的最大突发时间，设为 0，则关闭；该值越大，数据包发送量越大；当前推荐默认为 15.
+
+23) rsc=”0″
+网卡接收端合并开关；设为 1 表示开启，设为 0 表示关闭；在有些较新的网卡驱动中，带有 RSC 算法的，需要打开该功能。
+
+24) gso=”0″
+GSO 开关；设为 1 表示开启，设为 0 表示关闭；当网卡需要开启 gso 功能时，开启此功能，serverSpeeder 变为支持 gso 的模式；关闭此功能，如果网卡开启 gso，serverSpeeder 会关闭网卡的 gso 功能。
+
+25) lanSegment=””
+当 serverSpeeder 不是 TCP 连接的最终节点并且采用单臂模式部署时，如果 serverSpeeder 和服务器之间网络环境很好，不需要加速，将此参数的值设为 Lan 一侧的子网网段 (参数的值为子网网段的十六进制表示加子网掩码，例：ip 为 172.33.0.0/16，lanSegment="AC210000/16")，则 serverSpeeder 和服务器之间不进行加速，可以节省 serverSpeeder 使用的资源并获得更好的加速效果。如果不设置此参数，则 serverSpeeder 会对所有经过的 TCP 连接进行加速。（注：如果参数转换为十六进制后，第一位数字为 0 时，需要省略，不然无法正常写入配置。例如，参数十六进制值为：0C210000/16，那么 lanSegment="C210000/16".）
+
+26) configTimeout=”30″
+设置开启 serverSpeeder 时，写入配置所需要的时间。当引擎的数目很多时需要写入配置的时间较长，默认为 30s.
+
+27) engineNum=”0″
+serverSpeeder 启动的加速引擎的的个数；在多处理器（核）的系统环境下，启用多个加速引擎可以使网络流量的负载在多个处理器（核）之间做均衡分配，从而帮助优化系统 CPU 资源的利用；启用多个加速引擎时，引擎序号从 0 开始，分别为 engine0，engine1，engine2，等等；每个引擎的负载对应交给相同序号的处理器来处理，即 engine0 使用 cpu0，engine1 使用 cpu1 等；engineNum 默认为 0，表示启用的加速引擎个数与系统的处理器个数相同，64bit 架构下，当实际的 engineNum 参数大于 4 时，检查内存：
+当总内存减去 engine 占用内存剩余数小于 2G 时，提示用户一个 warning:
+LotServer Warning: $CPUNUM engines will be launched according to the config file. Your system’s total RAM is $memTotal(KB), which might be insufficient to run all the engines without performance penalty under extreme network conditions.
+
+28) shortRttMS=”10″
+白名单开关；打开后 serverSpeeder 将不对 RTT 小于 shortRttMS 的连接加速，节约系统资源，提高性能；设置为 0 时表示关闭此功能，serverSpeeder 会加速所有的连接；设置为其他值时，例如 10，则表示当第一次建立连接时，serverSpeeder 会测量所有的新建连接的 RTT，但是不对其进行加速；如果 RTT 大于 10ms，serverSpeeder 会从第二次建立连接开始对其加速，如果 RTT 小于 10ms，LotServer 则一直不会对其加速。默认值 10ms.
+重启 serverSpeeder 后，原来记录的每个连接的 RTT 会被清除，重新开始记录。serverSpeeder 使用五元组判断是否为同一连接，五元组包括：源 IP, 目的 IP, 源端口，目的端口和协议。
+
+29) apxexe=”/appex/bin/acce-***”
+serverSpeeder 模块文件的路径。
+
+30)apxlic=”/appex/etc/apx-***.lic”
+serverSpeeder 授权文件的路径。
