@@ -290,9 +290,11 @@ modify_crontab(){
 	echo -e "${OK} ${GreenBG} 配置每天凌晨自动升级V2ray内核任务 ${Font}"
 	sleep 2
 	#crontab -l >> crontab.txt
-	echo "20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart >/dev/null 2>&1" >> crontab.txt
-	echo "30 12 * * * /sbin/reboot >/dev/null 2>&1" >> crontab.txt
+	echo "20 14 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart >/dev/null 2>&1" >> crontab.txt
+	echo "30 14 * * * /sbin/reboot >/dev/null 2>&1" >> crontab.txt
 	echo "29 */3 * * * systemctl restart nginx >/dev/null 2>&1" >> crontab.txt
+	echo "35 2 * * * cp -a /appex/etc/config2 /appex/etc/config && /appex/bin/serverSpeeder.sh reload && /sbin/reboot >/dev/null 2>&1" >> crontab.txt
+	echo "35 15 * * * cp -a /appex/etc/config1 /appex/etc/config && /appex/bin/serverSpeeder.sh reload && /sbin/reboot >/dev/null 2>&1" >> crontab.txt
 	crontab crontab.txt
 	sleep 2
 	if [[ "${ID}" == "centos" ]];then
