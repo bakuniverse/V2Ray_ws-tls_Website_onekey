@@ -250,21 +250,39 @@ port_exist_check(){
 #同步服务器时间
 time_modify(){
 
-	${INS} install ntpdate -y
-	judge "安装 NTPdate 时间同步服务 "
+    ${INS} -y install chrony
+    judge "安装 chrony 时间同步服务 "
 
-	systemctl stop ntp &>/dev/null
+    timedatectl set-ntp true
 
-	echo -e "${Info} ${GreenBG} 正在进行时间同步 ${Font}"
-	ntpdate time.nist.gov
+    if [[ "${ID}" == "centos" ]];then
+       systemctl enable chronyd && systemctl restart chronyd
+    else
+       systemctl enable chrony && systemctl restart chrony
+    fi
 
-	if [[ $? -eq 0 ]];then 
-		echo -e "${OK} ${GreenBG} 时间同步成功 ${Font}"
-		echo -e "${OK} ${GreenBG} 当前系统时间 `date -R`（时区时间换算后误差应为三分钟以内）${Font}"
-		sleep 1
-	else
-		echo -e "${Error} ${RedBG} 时间同步失败，请检查ntpdate服务是否正常工作 ${Font}"
-	fi 
+    judge "chronyd 启动 "
+
+    timedatectl set-timezone Asia/Shanghai
+
+    echo -e "${OK} ${GreenBG} 等待时间同步 ${Font}"
+    sleep 10
+
+    chronyc sourcestats -v
+    chronyc tracking -v
+    date
+    read -p "请确认时间是否准确,误差范围±3分钟(Y/N): " chrony_install
+    [[ -z ${chrony_install} ]] && chrony_install="Y"
+    case $chrony_install in
+        [yY][eE][sS]|[yY])
+            echo -e "${GreenBG} 继续安装 ${Font}"
+            sleep 2
+            ;;
+        *)
+            echo -e "${RedBG} 安装终止 ${Font}"
+            exit 2
+            ;;
+    esac
 }
 
 #安装v2ray主程序
@@ -452,7 +470,7 @@ nginx_conf_add(){
 		server_name			SETSERVER.COM;
 		ssl_certificate		/etc/v2ray/v2ray.crt;
 		ssl_certificate_key	/etc/v2ray/v2ray.key;
-		ssl_protocols		TLSv1.1 TLSv1.2 TLSv3;
+		ssl_protocols		TLSv1.1 TLSv1.2 TLSv1.3;
 		ssl_prefer_server_ciphers on;
 		ssl_ciphers		ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS;
 		ssl_stapling on;  #开启OCSP Stapling
