@@ -131,7 +131,7 @@ port_alterid_set(){
 	[[ -z ${port} ]] && port="443"
 	echo -e "${Info} ${GreenBG} 【配置 3/3 】请输入alterID（默认:64 无特殊需求请直接按回车键） ${Font}"
 	stty erase '^H' && read -p "请输入：" alterID
-	[[ -z ${alterID} ]] && alterID="64"
+	[[ -z ${alterID} ]] && alterID="4"
 	echo -e "----------------------------------------------------------"
 	echo -e "${Info} ${GreenBG} 你输入的配置信息为 域名：${domain} 端口：${port} alterID：${alterID} ${Font}"
 	echo -e "----------------------------------------------------------"
