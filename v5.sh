@@ -1,122 +1,238 @@
 #!/bin/bash
-PATH=/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:~/bin
-export PATH
 
-cd $(cd "$(dirname "$0")"; pwd)
 #====================================================
-#	System Request:Debian 9+/Ubuntu 18.04+/Centos 7+
-#	Author:	wulabing
-#	Dscription: V2ray ws+tls onekey Management
-#	Version: 1.0
-#	email:admin@wulabing.com
+#	System Request:Debian 7+/Ubuntu 14.04+/Centos 6+
+#	Author: wulabing & dylanbai8
+#	Dscription: V2RAY 基于 NGINX 的 VMESS+WS+TLS+Website(Use Host)+Rinetd BBR
+#	Blog: https://www.wulabing.com https://oo0.bid
 #	Official document: www.v2ray.com
 #====================================================
 
-#fonts color
+#定义文字颜色
 Green="\033[32m"
 Red="\033[31m"
-Yellow="\033[33m"
 GreenBG="\033[42;37m"
 RedBG="\033[41;37m"
 Font="\033[0m"
 
-#notification information
+#定义提示信息
 Info="${Green}[信息]${Font}"
 OK="${Green}[OK]${Font}"
 Error="${Red}[错误]${Font}"
 
-# 版本
-shell_version="1.0.9"
-shell_mode="None"
-version_cmp="/tmp/version_cmp.tmp"
+#定义配置文件路径
 v2ray_conf_dir="/etc/v2ray"
-nginx_conf_dir="/etc/nginx/conf.d"
+nginx_conf_dir="/etc/nginx/conf"
 v2ray_conf="${v2ray_conf_dir}/config.json"
+v2ray_user="${v2ray_conf_dir}/user.json"
 nginx_conf="${nginx_conf_dir}/v2ray.conf"
-nginx_dir="/etc/nginx"
-web_dir="/home/wwwroot"
-nginx_openssl_src="/usr/local/src"
-v2ray_bin_file="/usr/bin/v2ray"
-v2ray_info_file="$HOME/v2ray_info.inf"
-v2ray_qr_config_file="/etc/v2ray/vmess_qr.json"
 nginx_systemd_file="/etc/systemd/system/nginx.service"
-v2ray_systemd_file="/etc/systemd/system/v2ray.service"
-v2ray_access_log="/var/log/v2ray/access.log"
-v2ray_error_log="/var/log/v2ray/error.log"
-amce_sh_file="/root/.acme.sh/acme.sh"
-nginx_version="1.17.8"
-openssl_version="1.1.1d"
+nginx_openssl_src="/usr/local/src"
+nginx_dir="/etc/nginx"
+nginx_version="1.18.0"
+openssl_version="1.1.1g"
 jemalloc_version="5.2.1"
-
-#生成伪装路径
-camouflage=`cat /dev/urandom | head -n 10 | md5sum | head -c 8`
-hostheader=`cat /dev/urandom | head -n 10 | md5sum | head -c 8`
+THREAD=$(grep 'processor' /proc/cpuinfo | sort -u | wc -l)
 
 source /etc/os-release
 
-#从VERSION中提取发行版系统的英文名称，为了在debian/ubuntu下添加相对应的Nginx apt源
-VERSION=`echo ${VERSION} | awk -F "[()]" '{print $2}'`
-
-check_system(){
-    if [[ "${ID}" == "centos" && ${VERSION_ID} -ge 7 ]];then
-        echo -e "${OK} ${GreenBG} 当前系统为 Centos ${VERSION_ID} ${VERSION} ${Font}"
-        INS="yum"
-    elif [[ "${ID}" == "debian" && ${VERSION_ID} -ge 8 ]];then
-        echo -e "${OK} ${GreenBG} 当前系统为 Debian ${VERSION_ID} ${VERSION} ${Font}"
-        INS="apt"
-        $INS update
-        ## 添加 Nginx apt源
-		## 添加 Nginx apt源
-		if [[ -e /etc/apt/sources.bak ]]; then
-		echo -e "${OK} ${GreenBG} Nginx apt源 已添加 ${Font}"
-		else
-		cp -rp /etc/apt/sources.list /etc/apt/sources.bak
-		echo "deb http://nginx.org/packages/mainline/debian/ ${VERSION} nginx" >> /etc/apt/sources.list
-		echo "deb-src http://nginx.org/packages/mainline/debian/ ${VERSION} nginx" >> /etc/apt/sources.list
-		wget -N --no-check-certificate https://nginx.org/keys/nginx_signing.key >/dev/null 2>&1
-		apt-key add nginx_signing.key >/dev/null 2>&1
-		rm -rf add nginx_signing.key >/dev/null 2>&1
-		echo -e "${OK} ${GreenBG} 添加 Nginx apt源 成功 ${Font}"
-		fi
-    elif [[ "${ID}" == "ubuntu" && `echo "${VERSION_ID}" | cut -d '.' -f1` -ge 16 ]];then
-        echo -e "${OK} ${GreenBG} 当前系统为 Ubuntu ${VERSION_ID} ${UBUNTU_CODENAME} ${Font}"
-        INS="apt"
-        $INS update
-    else
-        echo -e "${Error} ${RedBG} 当前系统为 ${ID} ${VERSION_ID} 不在支持的系统列表内，安装中断 ${Font}"
-        exit 1
-    fi
-
-    $INS install dbus
-    
-        systemctl stop firewalld
-	systemctl disable firewalld
-	 echo -e "${OK} ${GreenBG} firewalld 已关闭 ${Font}"
-
-    systemctl stop ufw 
-     systemctl disable ufw
-    echo -e "${OK} ${GreenBG} ufw 已关闭 ${Font}"
+#脚本欢迎语
+v2ray_hello(){
+	echo ""
+	echo -e "${Info} ${GreenBG} 你正在执行 V2RAY 基于 NGINX 的 VMESS+WS+TLS+Website(Use Host)+Rinetd BBR 一键安装脚本 ${Font}"
+	echo ""
+	random_number
 }
 
+#生成 转发端口 UUID 随机路径 伪装域名
+random_number(){
+	let PORT=$RANDOM+10000
+	UUID=$(cat /proc/sys/kernel/random/uuid)
+	camouflage=`cat /dev/urandom | head -n 10 | md5sum | head -c 9`
+	hostheader=`cat /dev/urandom | head -n 10 | md5sum | head -c 9`
+}
+
+#检测root权限
 is_root(){
-    if [ `id -u` == 0 ]
-        then echo -e "${OK} ${GreenBG} 当前用户是root用户，进入安装流程 ${Font}"
-        sleep 3
-    else
-        echo -e "${Error} ${RedBG} 当前用户不是root用户，请切换到root用户后重新执行脚本 ${Font}"
-        exit 1
-    fi
+	if [ `id -u` == 0 ]
+		then echo -e "${OK} ${GreenBG} 当前用户是root用户，开始安装流程 ${Font}"
+		sleep 3
+	else
+		echo -e "${Error} ${RedBG} 当前用户不是root用户，请切换到root用户后重新执行脚本 ${Font}"
+		exit 1
+	fi
 }
+
+#检测系统版本并添加源
+check_system(){
+	VERSION=`echo ${VERSION} | awk -F "[()]" '{print $2}'`
+	if [[ "${ID}" == "centos" && ${VERSION_ID} -ge 7 ]];then
+		echo -e "${OK} ${GreenBG} 当前系统为 Centos ${VERSION_ID} ${VERSION} ${Font}"
+		INS="yum"
+		echo -e "${OK} ${GreenBG} SElinux 设置中，请耐心等待，不要进行其他操作${Font}"
+		setsebool -P httpd_can_network_connect 1 >/dev/null 2>&1
+		echo -e "${OK} ${GreenBG} SElinux 设置完成 ${Font}"
+		## 添加 Nginx apt源
+		touch /etc/yum.repos.d/nginx.repo
+		cat <<EOF > /etc/yum.repos.d/nginx.repo
+[nginx]
+name=nginx repo
+baseurl=http://nginx.org/packages/mainline/centos/7/\$basearch/
+gpgcheck=0
+enabled=1
+EOF
+		echo -e "${OK} ${GreenBG} 添加 Nginx yum源 成功 ${Font}"
+	elif [[ "${ID}" == "debian" && ${VERSION_ID} -ge 8 ]];then
+		echo -e "${OK} ${GreenBG} 当前系统为 Debian ${VERSION_ID} ${VERSION} ${Font}"
+		INS="apt"
+	elif [[ "${ID}" == "ubuntu" && `echo "${VERSION_ID}" | cut -d '.' -f1` -ge 16 ]];then
+		echo -e "${OK} ${GreenBG} 当前系统为 Ubuntu ${VERSION_ID} ${VERSION_CODENAME} ${Font}"
+		INS="apt"
+	else
+		echo -e "${Error} ${RedBG} 当前系统为 ${ID} ${VERSION_ID} 不在支持的系统列表内，安装中断 ${Font}"
+		exit 1
+	fi
+}
+
+#检测安装完成或失败
 judge(){
-    if [[ $? -eq 0 ]];then
-        echo -e "${OK} ${GreenBG} $1 完成 ${Font}"
-        sleep 1
-    else
-        echo -e "${Error} ${RedBG} $1 失败${Font}"
-        exit 1
-    fi
+	if [[ $? -eq 0 ]];then
+		echo -e "${OK} ${GreenBG} $1 完成 ${Font}"
+		sleep 1
+	else
+		echo -e "${Error} ${RedBG} $1 失败${Font}"
+		exit 1
+	fi
 }
-chrony_install(){
+
+#用户设定 域名 端口 alterID
+port_alterid_set(){
+	echo -e "${Info} ${GreenBG} 【配置 1/3 】请输入你的域名信息(如:www.bing.com)，请确保域名A记录已正确解析至服务器IP ${Font}"
+	stty erase '^H' && read -p "请输入：" domain
+	echo -e "${Info} ${GreenBG} 【配置 2/3 】请输入连接端口（默认:443 无特殊需求请直接按回车键） ${Font}"
+	stty erase '^H' && read -p "请输入：" port
+	[[ -z ${port} ]] && port="443"
+	echo -e "${Info} ${GreenBG} 【配置 3/3 】请输入alterID（默认:4 无特殊需求请直接按回车键） ${Font}"
+	stty erase '^H' && read -p "请输入：" alterID
+	[[ -z ${alterID} ]] && alterID="4"
+	echo -e "----------------------------------------------------------"
+	echo -e "${Info} ${GreenBG} 你输入的配置信息为 域名：${domain} 端口：${port} alterID：${alterID} ${Font}"
+	echo -e "----------------------------------------------------------"
+}
+
+#强制清除可能残余的http服务 v2ray服务 关闭防火墙 更新源
+apache_uninstall(){
+	echo -e "${OK} ${GreenBG} 正在强制清理可能残余的http服务 ${Font}"
+	if [[ "${ID}" == "centos" ]];then
+
+	systemctl disable httpd >/dev/null 2>&1
+	systemctl stop httpd >/dev/null 2>&1
+	yum erase httpd httpd-tools apr apr-util -y >/dev/null 2>&1
+
+	systemctl disable firewalld >/dev/null 2>&1
+	systemctl stop firewalld >/dev/null 2>&1
+
+	echo -e "${OK} ${GreenBG} 正在更新源 请稍后 …… ${Font}"
+
+	yum -y update
+
+	else
+
+	systemctl disable apache2 >/dev/null 2>&1
+	systemctl stop apache2 >/dev/null 2>&1
+	apt purge apache2 -y >/dev/null 2>&1
+
+	echo -e "${OK} ${GreenBG} 正在更新源 请稍后 …… ${Font}"
+
+	apt -y update
+
+	fi
+
+	systemctl disable nginx >/dev/null 2>&1
+	systemctl stop nginx >/dev/null 2>&1
+	apt purge nginx -y >/dev/null 2>&1
+
+	systemctl disable v2ray >/dev/null 2>&1
+	systemctl stop v2ray >/dev/null 2>&1
+	killall -9 v2ray >/dev/null 2>&1
+
+	systemctl disable rinetd-bbr >/dev/null 2>&1
+	systemctl stop rinetd-bbr >/dev/null 2>&1
+	killall -9 rinetd-bbr >/dev/null 2>&1
+
+	rm -rf /www >/dev/null 2>&1
+	rm -rf /etc/nginx/conf.d/v2ray.conf >/dev/null 2>&1
+	rm -rf /etc/systemd/system/v2ray.service /etc/v2ray/config.json /etc/v2ray/user.json >/dev/null 2>&1
+	rm -rf /usr/bin/rinetd-bbr /etc/rinetd-bbr.conf /etc/systemd/system/rinetd-bbr.service >/dev/null 2>&1
+}
+
+#安装各种依赖工具
+dependency_install(){
+	for CMD in iptables grep cut xargs systemctl ip awk
+	do
+		if ! type -p ${CMD}; then
+			echo -e "${Error} ${RedBG} 缺少必要依赖 脚本终止安装 ${Font}"
+			exit 1
+		fi
+	done
+	${INS} install curl lsof unzip zip gcc make libpcre3 libpcre3-dev zlib1g-dev libldap2-dev libssl-dev -y
+
+	if [[ "${ID}" == "centos" ]];then
+		${INS} -y install crontabs
+	else
+		${INS} -y install cron
+	fi
+	judge "安装 crontab"
+
+	${INS} install bc -y
+	judge "安装 bc"
+}
+
+#检测域名解析是否正确
+domain_check(){
+	domain_ip=`ping ${domain} -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
+	echo -e "${OK} ${GreenBG} 正在获取 公网ip 信息，请耐心等待 ${Font}"
+	local_ip=`curl -4 ip.sb`
+	echo -e "${OK} ${GreenBG} 域名dns解析IP：${domain_ip} ${Font}"
+	echo -e "${OK} ${GreenBG} 本机IP: ${local_ip} ${Font}"
+	sleep 2
+	if [[ $(echo ${local_ip}|tr '.' '+'|bc) -eq $(echo ${domain_ip}|tr '.' '+'|bc) ]];then
+		echo -e "${OK} ${GreenBG} 域名dns解析IP  与 本机IP 匹配 域名解析正确 ${Font}"
+		sleep 2
+	else
+		echo -e "${Error} ${RedBG} 域名dns解析IP 与 本机IP 不匹配 是否继续安装？（y/n）${Font}" && read install
+		case $install in
+		[yY][eE][sS]|[yY])
+			echo -e "${GreenBG} 继续安装 ${Font}"
+			sleep 2
+			;;
+		*)
+			echo -e "${RedBG} 安装终止 ${Font}"
+			exit 2
+			;;
+		esac
+	fi
+}
+
+#检测端口是否占用
+port_exist_check(){
+	if [[ 0 -eq `lsof -i:"$1" | wc -l` ]];then
+		echo -e "${OK} ${GreenBG} $1 端口未被占用 ${Font}"
+		sleep 1
+	else
+		echo -e "${Error} ${RedBG} 检测到 $1 端口被占用，以下为 $1 端口占用信息 ${Font}"
+		lsof -i:"$1"
+		echo -e "${OK} ${GreenBG} 5s 后将尝试自动 kill 占用进程 ${Font}"
+		sleep 5
+		lsof -i:"$1" | awk '{print $2}'| grep -v "PID" | xargs kill -9
+		echo -e "${OK} ${GreenBG} kill 完成 ${Font}"
+		sleep 1
+	fi
+}
+
+#同步服务器时间
+time_modify(){
+
     ${INS} -y install chrony
     judge "安装 chrony 时间同步服务 "
 
@@ -152,539 +268,34 @@ chrony_install(){
     esac
 }
 
-dependency_install(){
-    ${INS} install wget git lsof -y
-
-    if [[ "${ID}" == "centos" ]];then
-       ${INS} -y install crontabs
-    else
-       ${INS} -y install cron
-    fi
-    judge "安装 crontab"
-
-    if [[ "${ID}" == "centos" ]];then
-       touch /var/spool/cron/root && chmod 600 /var/spool/cron/root
-       systemctl start crond && systemctl enable crond
-    else
-       touch /var/spool/cron/crontabs/root && chmod 600 /var/spool/cron/crontabs/root
-       systemctl start cron && systemctl enable cron
-
-    fi
-    judge "crontab 自启动配置 "
-
-
-
-    ${INS} -y install bc
-    judge "安装 bc"
-
-    ${INS} -y install unzip
-    judge "安装 unzip"
-
-    ${INS} -y install qrencode
-    judge "安装 qrencode"
-
-    ${INS} -y install curl
-    judge "安装 crul"
-
-    if [[ "${ID}" == "centos" ]];then
-       ${INS} -y groupinstall "Development tools"
-    else
-       ${INS} -y install build-essential
-    fi
-    judge "编译工具包 安装"
-
-    if [[ "${ID}" == "centos" ]];then
-       ${INS} -y install pcre pcre-devel zlib-devel epel-release
-    else
-       ${INS} -y install libpcre3 libpcre3-dev zlib1g-dev dbus
-    fi
-
-#    ${INS} -y install rng-tools
-#    judge "rng-tools 安装"
-
-    ${INS} -y install haveged
-#    judge "haveged 安装"
-
-    sed -i -r '/^HRNGDEVICE/d;/#HRNGDEVICE=\/dev\/null/a HRNGDEVICE=/dev/urandom' /etc/default/rng-tools
-
-    if [[ "${ID}" == "centos" ]];then
-#       systemctl start rngd && systemctl enable rngd
-#       judge "rng-tools 启动"
-       systemctl start haveged && systemctl enable haveged
-#       judge "haveged 启动"
-    else
-#       systemctl start rng-tools && systemctl enable rng-tools
-#       judge "rng-tools 启动"
-       systemctl start haveged && systemctl enable haveged
-#       judge "haveged 启动"
-    fi
-}
-basic_optimization(){
-    # 最大文件打开数
-    sed -i '/^\*\ *soft\ *nofile\ *[[:digit:]]*/d' /etc/security/limits.conf
-    sed -i '/^\*\ *hard\ *nofile\ *[[:digit:]]*/d' /etc/security/limits.conf
-    echo '* soft nofile 65536' >> /etc/security/limits.conf
-    echo '* hard nofile 65536' >> /etc/security/limits.conf
-
-    # 关闭 Selinux
-    if [[ "${ID}" == "centos" ]];then
-        sed -i 's/^SELINUX=.*/SELINUX=disabled/' /etc/selinux/config
-        setenforce 0
-    fi
-
-}
-port_alterid_set(){
-    read -p "请输入连接端口（default:443）:" port
-    [[ -z ${port} ]] && port="443"
-    read -p "请输入alterID（default:64 仅允许填数字）:" alterID
-    [[ -z ${alterID} ]] && alterID="64"
-}
-modify_path(){
-    sed -i "/\"path\"/c \\\t  \"path\":\"\/${camouflage}\/\"," ${v2ray_conf}
-    judge "V2ray 伪装路径 修改"
-}
-modify_alterid(){
-    sed -i "/\"alterId\"/c \\\t  \"alterId\":${alterID}" ${v2ray_conf}
-    judge "V2ray alterid 修改"
-    [ -f ${v2ray_qr_config_file} ] && sed -i "/\"aid\"/c \\  \"aid\": \"${alterID}\"," ${v2ray_qr_config_file}
-    echo -e "${GreenBG} alterID:${alterID} ${Font}"
-}
-modify_inbound_port(){
-    if [[ "$shell_mode" != "h2" ]]
-    then
-        let PORT=$RANDOM+10000
-        sed -i "/\"port\"/c  \    \"port\":${PORT}," ${v2ray_conf}
-    else
-        sed -i "/\"port\"/c  \    \"port\":${port}," ${v2ray_conf}
-    fi
-    judge "V2ray inbound_port 修改"
-}
-modify_UUID(){
-    [ -z $UUID ] && UUID=$(cat /proc/sys/kernel/random/uuid)
-    sed -i "/\"id\"/c \\\t  \"id\":\"${UUID}\"," ${v2ray_conf}
-    sed -i "s/SETHEADER/${hostheader}/g" ${v2ray_conf}
-    judge "V2ray UUID 修改"
-    [ -f ${v2ray_qr_config_file} ] && sed -i "/\"id\"/c \\  \"id\": \"${UUID}\"," ${v2ray_qr_config_file}
-    echo -e "${GreenBG} UUID:${UUID} ${Font}"
-}
-modify_nginx_port(){
-    sed -i "/ssl http2;$/c \\\tlisten ${port} ssl http2;" ${nginx_conf}
-    sed -i "s/SETHEADER/${hostheader}/g" ${nginx_conf}
-    judge "V2ray port 修改"
-    [ -f ${v2ray_qr_config_file} ] && sed -i "/\"port\"/c \\  \"port\": \"${port}\"," ${v2ray_qr_config_file}
-    echo -e "${GreenBG} 端口号:${port} ${Font}"
-}
-modify_nginx_other(){
-    sed -i "/server_name/c \\\tserver_name ${domain};" ${nginx_conf}
-    sed -i "/location/c \\\tlocation \/${camouflage}\/" ${nginx_conf}
-    sed -i "/proxy_pass/c \\\tproxy_pass http://127.0.0.1:${PORT};" ${nginx_conf}
-    sed -i "/return/c \\\treturn 301 https://${domain}\$request_uri;" ${nginx_conf}
-    #sed -i "27i \\\tproxy_intercept_errors on;"  ${nginx_dir}/conf/nginx.conf
-}
-web_camouflage(){
-    ##请注意 这里和LNMP脚本的默认路径冲突，千万不要在安装了LNMP的环境下使用本脚本，否则后果自负
-    rm -rf /home/wwwroot && mkdir -p /home/wwwroot && cd /home/wwwroot
-    wget https://github.com/bakuniverse/V2Ray_ws-tls_Website_onekey/raw/master/V2rayWebsite.tar.gz
-    tar -zxvf V2rayWebsite.tar.gz -C /home/wwwroot
-    rm -f V2rayWebsite.tar.gz
-    judge "web 站点伪装"
-}
+#安装v2ray主程序
 v2ray_install(){
-    if [[ -d /root/v2ray ]];then
-        rm -rf /root/v2ray
-    fi
-    if [[ -d /etc/v2ray ]];then
-        rm -rf /etc/v2ray
-    fi
-    mkdir -p /root/v2ray && cd /root/v2ray
-    wget -N --no-check-certificate https://install.direct/go.sh
-
-    ## wget http://install.direct/go.sh
-
-    if [[ -f go.sh ]];then
-        bash go.sh --force
-        judge "安装 V2ray"
-    else
-        echo -e "${Error} ${RedBG} V2ray 安装文件下载失败，请检查下载地址是否可用 ${Font}"
-        exit 4
-    fi
-    # 清除临时文件
-}
-nginx_exist_check(){
-    if [[ -f "/etc/nginx/sbin/nginx" ]];then
-        echo -e "${OK} ${GreenBG} Nginx已存在，跳过编译安装过程 ${Font}"
-        sleep 2
-    else
-        nginx_install
-    fi
-}
-nginx_install(){
-#    if [[ -d "/etc/nginx" ]];then
-#        rm -rf /etc/nginx
-#    fi
-
-        ${INS} update -y
-	${INS} install nginx -y
-	if [[ -d /etc/nginx ]];then
-		echo -e "${OK} ${GreenBG} nginx 安装完成 ${Font}"
-		sleep 2
-	else
-		echo -e "${Error} ${RedBG} nginx 安装失败 ${Font}"
-		exit 5
+	if [[ -d /root/v2ray ]];then
+		rm -rf /root/v2ray
 	fi
 
-    # 修改基本配置
-	sed -i 's/worker_connections  1024;/worker_connections  520000;/' ${nginx_dir}/nginx.conf
-	sed -i 's/events/worker_rlimit_nofile 520000;\nevents/' ${nginx_dir}/nginx.conf
-
-}
-ssl_install(){
-    if [[ "${ID}" == "centos" ]];then
-        ${INS} install socat nc -y
-    else
-        ${INS} install socat netcat -y
-    fi
-    judge "安装 SSL 证书生成脚本依赖"
-
-    curl  https://get.acme.sh | sh
-    judge "安装 SSL 证书生成脚本"
-}
-domain_check(){
-    read -p "请输入你的域名信息(eg:www.wulabing.com):" domain
-    domain_ip=`ping ${domain} -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
-    echo -e "${OK} ${GreenBG} 正在获取 公网ip 信息，请耐心等待 ${Font}"
-    local_ip=`curl -4 ip.sb`
-    echo -e "域名dns解析IP：${domain_ip}"
-    echo -e "本机IP: ${local_ip}"
-    sleep 2
-    if [[ $(echo ${local_ip}|tr '.' '+'|bc) -eq $(echo ${domain_ip}|tr '.' '+'|bc) ]];then
-        echo -e "${OK} ${GreenBG} 域名dns解析IP 与 本机IP 匹配 ${Font}"
-        sleep 2
-    else
-        echo -e "${Error} ${RedBG} 请确保域名添加了正确的 A 记录，否则将无法正常使用 V2ray"
-        echo -e "${Error} ${RedBG} 域名dns解析IP 与 本机IP 不匹配 是否继续安装？（y/n）${Font}" && read install
-        case $install in
-        [yY][eE][sS]|[yY])
-            echo -e "${GreenBG} 继续安装 ${Font}"
-            sleep 2
-            ;;
-        *)
-            echo -e "${RedBG} 安装终止 ${Font}"
-            exit 2
-            ;;
-        esac
-    fi
+	mkdir -p /root/v2ray && cd /root/v2ray
+	wget -N --no-check-certificate https://install.direct/go.sh
+	
+	if [[ -f go.sh ]];then
+		bash go.sh --force
+		judge "安装 V2ray"
+	else
+		echo -e "${Error} ${RedBG} V2ray 安装文件下载失败，请检查下载地址是否可用 ${Font}"
+		exit 4
+	fi
 }
 
-port_exist_check(){
-    if [[ 0 -eq `lsof -i:"$1" | grep -i "listen" | wc -l` ]];then
-        echo -e "${OK} ${GreenBG} $1 端口未被占用 ${Font}"
-        sleep 1
-    else
-        echo -e "${Error} ${RedBG} 检测到 $1 端口被占用，以下为 $1 端口占用信息 ${Font}"
-        lsof -i:"$1"
-        echo -e "${OK} ${GreenBG} 5s 后将尝试自动 kill 占用进程 ${Font}"
-        sleep 5
-        lsof -i:"$1" | awk '{print $2}'| grep -v "PID" | xargs kill -9
-        echo -e "${OK} ${GreenBG} kill 完成 ${Font}"
-        sleep 1
-    fi
-}
-acme(){
-    $HOME/.acme.sh/acme.sh --issue -d ${domain} --standalone -k ec-256 --force --test
-    if [[ $? -eq 0 ]];then
-        echo -e "${OK} ${GreenBG} SSL 证书测试签发成功，开始正式签发 ${Font}"
-        sleep 2
-    else
-        echo -e "${Error} ${RedBG} SSL 证书测试签发失败 ${Font}"
-        rm -rf "$HOME/.acme.sh/${domain}_ecc/${domain}.key" && rm -rf "$HOME/.acme.sh/${domain}_ecc/${domain}.cer"
-        exit 1
-    fi
-
-    $HOME/.acme.sh/acme.sh --issue -d ${domain} --standalone -k ec-256 --force
-    if [[ $? -eq 0 ]];then
-        echo -e "${OK} ${GreenBG} SSL 证书生成成功 ${Font}"
-        sleep 2
-        $HOME/.acme.sh/acme.sh --installcert -d ${domain} --fullchainpath /etc/v2ray/v2ray.crt --keypath /etc/v2ray/v2ray.key --ecc
-        if [[ $? -eq 0 ]];then
-        echo -e "${OK} ${GreenBG} 证书配置成功 ${Font}"
-        sleep 2
-        fi
-    else
-        echo -e "${Error} ${RedBG} SSL 证书生成失败 ${Font}"
-        rm -rf "$HOME/.acme.sh/${domain}_ecc/${domain}.key" && rm -rf "$HOME/.acme.sh/${domain}_ecc/${domain}.cer"
-        exit 1
-    fi
-}
-v2ray_conf_add_tls(){
-    cd /etc/v2ray
-    wget https://raw.githubusercontent.com/bakuniverse/V2Ray_ws-tls_Website_onekey/master/tls/config.json -O config.json
-    modify_path
-    modify_alterid
-    modify_inbound_port
-    modify_UUID
-}
-v2ray_conf_add_h2(){
-    cd /etc/v2ray
-    wget https://raw.githubusercontent.com/wulabing/V2Ray_ws-tls_bash_onekey/master/http2/config.json -O config.json
-    modify_path
-    modify_alterid
-    modify_inbound_port
-    modify_UUID
-}
-nginx_conf_add(){
-    touch ${nginx_conf_dir}/v2ray.conf
-    cat>${nginx_conf_dir}/v2ray.conf<<EOF
-    server {
-        listen 443 ssl http2;
-        ssl_certificate       /etc/v2ray/v2ray.crt;
-        ssl_certificate_key   /etc/v2ray/v2ray.key;
-        ssl_protocols         TLSv1.2 TLSv1.3;
-        ssl_ciphers           TLS13-AES-256-GCM-SHA384:TLS13-CHACHA20-POLY1305-SHA256:TLS13-AES-128-GCM-SHA256:TLS13-AES-128-CCM-8-SHA256:TLS13-AES-128-CCM-SHA256:EECDH+CHACHA20:EECDH+CHACHA20-draft:EECDH+ECDSA+AES128:EECDH+aRSA+AES128:RSA+AES128:EECDH+ECDSA+AES256:EECDH+aRSA+AES256:RSA+AES256:EECDH+ECDSA+3DES:EECDH+aRSA+3DES:RSA+3DES:!MD5;
-        server_name           serveraddr.com;
-        index index.html index.htm;
-        root  /home/wwwroot;
-        error_page 400 = /400.html;
-        location /ray/
-        {
-        proxy_redirect off;
-        proxy_http_version 1.1;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host \$http_host;
-        if (\$http_host = "www.SETHEADER.com" ) {
-		proxy_pass http://127.0.0.1:10000;
-		}
-        }
-}
-    server {
-        listen 80;
-        server_name serveraddr.com;
-        return 301 https://serveraddr.com\$request_uri;
-    }
-EOF
-
-modify_nginx_port
-modify_nginx_other
-judge "Nginx 配置修改"
-
-}
-
-start_process_systemd(){
-    systemctl daemon-reload
-    if [[ "$shell_mode" != "h2" ]]
-    then
-        systemctl restart nginx
-        judge "Nginx 启动"
-    fi
-    systemctl restart v2ray
-    judge "V2ray 启动"
-}
-
-enable_process_systemd(){
-    systemctl enable v2ray
-    judge "设置 v2ray 开机自启"
-    if [[ "$shell_mode" != "h2" ]]
-    then
-        systemctl enable nginx
-        judge "设置 Nginx 开机自启"
-    fi
-
-}
-
-stop_process_systemd(){
-    if [[ "$shell_mode" != "h2" ]]
-    then
-        systemctl stop nginx
-    fi
-    systemctl stop v2ray
-}
-nginx_process_disabled(){
-    [ -f $nginx_systemd_file ] && systemctl stop nginx && systemctl disable nginx
-}
-
-#debian 系 9 10 适配
-#rc_local_initialization(){
-#    if [[ -f /etc/rc.local ]];then
-#        chmod +x /etc/rc.local
-#    else
-#        touch /etc/rc.local && chmod +x /etc/rc.local
-#        echo "#!/bin/bash" >> /etc/rc.local
-#        systemctl start rc-local
-#    fi
-#
-#    judge "rc.local 配置"
-#}
-
-vmess_qr_config_tls_ws(){
-    cat > $v2ray_qr_config_file <<-EOF
-{
-  "v": "2",
-  "ps": "${domain}",
-  "add": "${domain}",
-  "port": "${port}",
-  "id": "${UUID}",
-  "aid": "${alterID}",
-  "net": "ws",
-  "type": "none",
-  "host": "www.${hostheader}.com",
-  "path": "/${camouflage}/",
-  "tls": "tls"
-}
-EOF
-}
-
-vmess_qr_config_h2(){
-    cat > $v2ray_qr_config_file <<-EOF
-{
-  "v": "2",
-  "ps": "${domain}",
-  "add": "${domain}",
-  "port": "${port}",
-  "id": "${UUID}",
-  "aid": "${alterID}",
-  "net": "h2",
-  "type": "none",
-  "path": "/${camouflage}/",
-  "tls": "tls"
-}
-EOF
-}
-
-vmess_qr_link_image(){
-    vmess_link="vmess://$(cat $v2ray_qr_config_file | base64 -w 0)"
-    echo -e "${Red} URL导入链接:${vmess_link} ${Font}" >> ${v2ray_info_file}
-    echo -e "${Red} 二维码: ${Font}" >> ${v2ray_info_file}
-    echo -n "${vmess_link}"| qrencode -o - -t utf8 >> ${v2ray_info_file}
-}
-
-info_extraction(){
-    grep $1 $v2ray_qr_config_file | awk -F '"' '{print $4}'
-}
-basic_information(){
-    echo -e "${OK} ${Green} V2ray+ws+tls 安装成功" > ${v2ray_info_file}
-    echo -e "${Red} V2ray 配置信息 ${Font}" >> ${v2ray_info_file}
-    echo -e "${Red} 地址（address）:${Font} $(info_extraction "add") " >> ${v2ray_info_file}
-    echo -e "${Red} 端口（port）：${Font} $(info_extraction "port") " >> ${v2ray_info_file}
-    echo -e "${Red} 用户id（UUID）：${Font} $(info_extraction '\"id\"')" >> ${v2ray_info_file}
-    echo -e "${Red} 额外id（alterId）：${Font} $(info_extraction "aid")" >> ${v2ray_info_file}
-    echo -e "${Red} 加密方式（security）：${Font} 自适应 " >> ${v2ray_info_file}
-    echo -e "${Red} 传输协议（network）：${Font} $(info_extraction "net") " >> ${v2ray_info_file}
-    echo -e "${Red} 伪装类型（type）：${Font} none " >> ${v2ray_info_file}
-    echo -e "${Red} 路径（不要落下/）：${Font} $(info_extraction "path") " >> ${v2ray_info_file}
-    echo -e "${Green} 伪装域名（适用于 旧版v2rayNG）：${Font} /;www.${hostheader}.com">> ${v2ray_info_file}
-    echo -e "${Red} 底层传输安全：${Font} tls " >> ${v2ray_info_file}
-}
-show_information(){
-    cat ${v2ray_info_file}
-}
-ssl_judge_and_install(){
-# if [[ -f "/etc/v2ray/v2ray.key" || -f "/etc/v2ray/v2ray.crt" ]];then
-        echo "/etc/v2ray 目录下证书文件已存在"
-        echo -e "${OK} ${GreenBG} 是否删除 [Y/N]? ${Font}"
-        read -r ssl_delete
-        case $ssl_delete in
-            [yY][eE][sS]|[yY])
-                rm -rf /data/*
-                echo -e "${OK} ${GreenBG} 已删除 ${Font}"
-                ;;
-            *)
-                ;;
-        esac
-    fi
-
-    if [[ -f "/etc/v2ray/v2ray.key" || -f "/etc/v2ray/v2ray.crt" ]];then
-        echo "证书文件已存在"
-    if [[ -f "$HOME/.acme.sh/${domain}_ecc/${domain}.key" && -f "$HOME/.acme.sh/${domain}_ecc/${domain}.cer" ]];then
-        echo "证书文件已存在"
-        $HOME/.acme.sh/acme.sh --installcert -d ${domain} --fullchainpath /etc/v2ray/v2ray.crt --keypath /etc/v2ray/v2ray.key --ecc
-        judge "证书应用"
-    else
-        ssl_install
-        acme
-    fi
-}
-
-nginx_systemd(){
-    cat>$nginx_systemd_file<<EOF
-[Unit]
-Description=The NGINX HTTP and reverse proxy server
-After=syslog.target network.target remote-fs.target nss-lookup.target
-
-[Service]
-Type=forking
-PIDFile=/var/run/nginx.pid
-ExecStartPre=/usr/sbin/nginx -t
-ExecStart=/usr/sbin/nginx -c ${nginx_dir}/nginx.conf
-ExecReload=/usr/sbin/nginx -s reload
-ExecStop=/bin/kill -s QUIT \$MAINPID
-PrivateTmp=true
-
-[Install]
-WantedBy=multi-user.target
-EOF
-chmod +x $nginx_systemd_file
-
-judge "Nginx systemd ServerFile 添加"
-}
-
-tls_type(){
-    if [[ -f "/usr/sbin/nginx" ]] && [[ -f "$nginx_conf" ]] && [[ "$shell_mode" == "ws" ]];then
-        echo "请选择支持的 TLS 版本（default:1）:"
-        echo "1: TLS1.1 TLS1.2 and TLS1.3"
-        echo "2: TLS1.2 and TLS1.3"
-        echo "3: TLS1.3 only"
-        read -p  "请输入：" tls_version
-        [[ -z ${tls_version} ]] && tls_version=2
-        if [[ $tls_version == 3 ]];then
-            sed -i 's/ssl_protocols.*/ssl_protocols         TLSv1.3;/' $nginx_conf
-            echo -e "${OK} ${GreenBG} 已切换至 TLS1.3 only ${Font}"
-        elif [[ $tls_version == 1 ]];then
-            sed -i 's/ssl_protocols.*/ssl_protocols         TLSv1.1 TLSv1.2 TLSv1.3;/' $nginx_conf
-            echo -e "${OK} ${GreenBG} 已切换至 TLS1.1 TLS1.2 and TLS1.3 ${Font}"
-        else
-            sed -i 's/ssl_protocols.*/ssl_protocols         TLSv1.2 TLSv1.3;/' $nginx_conf
-            echo -e "${OK} ${GreenBG} 已切换至 TLS1.2 and TLS1.3 ${Font}"
-        fi
-        systemctl restart nginx
-        judge "Nginx 重启"
-    else
-        echo -e "${Error} ${RedBG} Nginx 或 配置文件不存在 或当前安装版本为 h2 ，请正确安装脚本后执行${Font}"
-    fi
-}
-show_access_log(){
-    [ -f ${v2ray_access_log} ] && tail -f ${v2ray_access_log} || echo -e "${RedBG}log文件不存在${Font}"
-}
-show_error_log(){
-    [ -f ${v2ray_error_log} ] && tail -f ${v2ray_error_log} || echo -e  "${RedBG}log文件不存在${Font}"
-}
-ssl_update_manuel(){
-    [ -f ${amce_sh_file} ] && "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh" || echo -e  "${RedBG}证书签发工具不存在，请确认你是否使用了自己的证书${Font}"
-}
-bbr_boost_sh(){
-    [ -f "tcp.sh" ] && rm -rf ./tcp.sh
-    wget -N --no-check-certificate "https://github.com/ylx2016/Linux-NetSpeed/releases/download/sh/tcp.sh" && chmod +x tcp.sh && ./tcp.sh
-}
-mtproxy_sh(){
-    [ -f "mtproxy_go.sh" ] && rm -rf ./mtproxy_go.sh
-    wget -N --no-check-certificate https://github.com/whunt1/onekeymakemtg/raw/master/mtproxy_go.sh && chmod +x mtproxy_go.sh && bash mtproxy_go.sh
-}
 #设置定时升级任务
-acme_cron_update(){
+modify_crontab(){
 	echo -e "${OK} ${GreenBG} 配置每天凌晨自动升级V2ray内核任务 ${Font}"
 	sleep 2
 	#crontab -l >> crontab.txt
-cat>$HOME/crontab.txt<<EOF
-20 12 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && systemctl restart v2ray
-0 3 * * * systemctl stop nginx && "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh" > /dev/null && systemctl start nginx
-30 12 * * * /sbin/reboot
-29 */3 * * * systemctl restart nginx
-1 0 * * 0 rm -rf /var/log/v2ray/access.log
-2 0 * * 0 rm -rf /var/log/v2ray/error.log
-EOF
-        sleep 2
+	echo "20 14 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart >/dev/null 2>&1" >> crontab.txt
+	echo "30 14 * * * /sbin/reboot >/dev/null 2>&1" >> crontab.txt
+	echo "29 */3 * * * systemctl restart nginx >/dev/null 2>&1" >> crontab.txt
+	echo "35 2 * * * cp -a /appex/etc/config2 /appex/etc/config && /appex/bin/serverSpeeder.sh reload && /sbin/reboot >/dev/null 2>&1" >> crontab.txt
+	echo "35 15 * * * cp -a /appex/etc/config1 /appex/etc/config && /appex/bin/serverSpeeder.sh reload && /sbin/reboot >/dev/null 2>&1" >> crontab.txt
 	crontab crontab.txt
 	sleep 2
 	if [[ "${ID}" == "centos" ]];then
@@ -693,219 +304,719 @@ EOF
 		systemctl restart cron
 	fi
 	rm -f crontab.txt
-	judge "cron 计划任务更新"
 }
-uninstall_all(){
-    stop_process_systemd
-    [[ -f $nginx_systemd_file ]] && rm -f $nginx_systemd_file
-    [[ -f $v2ray_systemd_file ]] && rm -f $v2ray_systemd_file
-    [[ -d $v2ray_bin_file ]] && rm -rf $v2ray_bin_file
-    if [[ -d $nginx_dir ]]
-    then
-        echo -e "${OK} ${Green} 是否卸载 Nginx [Y/N]? ${Font}"
-        read -r uninstall_nginx
-        case $uninstall_nginx in
-            [yY][eE][sS]|[yY])
-                rm -rf $nginx_dir
-                echo -e "${OK} ${Green} 已卸载 Nginx ${Font}"
-                ;;
-            *)
-                ;;
-        esac
-    fi
-    [[ -d $v2ray_conf_dir ]] && rm -rf $v2ray_conf_dir
-    [[ -d $web_dir ]] && rm -rf $web_dir
+
+#安装ssl依赖
+ssl_install(){
+	if [[ "${ID}" == "centos" ]];then
+		${INS} install socat nc -y
+	else
+		${INS} install socat netcat -y
+	fi
+	judge "安装 SSL 证书生成脚本依赖"
+
+	curl  https://get.acme.sh | sh
+	judge "安装 SSL 证书生成脚本 添加证书自动续签任务"
+
+}
+
+#生成ssl证书
+acme(){
+	~/.acme.sh/acme.sh --issue -d ${domain} --standalone -k ec-256 --force
+	if [[ $? -eq 0 ]];then
+		echo -e "${OK} ${GreenBG} SSL 证书生成成功 ${Font}"
+		sleep 2
+		~/.acme.sh/acme.sh --installcert -d ${domain} --fullchainpath /etc/v2ray/v2ray.crt --keypath /etc/v2ray/v2ray.key --ecc
+		if [[ $? -eq 0 ]];then
+		echo -e "${OK} ${GreenBG} 证书配置成功 ${Font}"
+		sleep 2
+		fi
+	else
+		echo -e "${Error} ${RedBG} SSL 证书生成失败 ${Font}"
+		exit 1
+	fi
+}
+
+#安装nginx主程序
+nginx_install(){
+
+    /usr/sbin/groupadd -f www
+    /usr/sbin/useradd -g www www
+    wget -nc --no-check-certificate http://nginx.org/download/nginx-${nginx_version}.tar.gz -P ${nginx_openssl_src}
+    judge "Nginx 下载"
+    wget -nc --no-check-certificate https://www.openssl.org/source/openssl-${openssl_version}.tar.gz -P ${nginx_openssl_src}
+    judge "openssl 下载"
+    wget -nc --no-check-certificate https://github.com/jemalloc/jemalloc/releases/download/${jemalloc_version}/jemalloc-${jemalloc_version}.tar.bz2 -P ${nginx_openssl_src}
+    judge "jemalloc 下载"
+
+    cd ${nginx_openssl_src} || exit
+
+    [[ -d nginx-"$nginx_version" ]] && rm -rf nginx-"$nginx_version"
+    tar -zxvf nginx-"$nginx_version".tar.gz
+
+    [[ -d openssl-"$openssl_version" ]] && rm -rf openssl-"$openssl_version"
+    tar -zxvf openssl-"$openssl_version".tar.gz
+
+    [[ -d jemalloc-"${jemalloc_version}" ]] && rm -rf jemalloc-"${jemalloc_version}"
+    tar -xvf jemalloc-"${jemalloc_version}".tar.bz2
+
+    [[ -d "$nginx_dir" ]] && rm -rf ${nginx_dir}
+
+    echo -e "${OK} ${GreenBG} 即将开始编译安装 jemalloc ${Font}"
+    sleep 2
+
+    cd jemalloc-${jemalloc_version} || exit
+    ./configure
+    judge "编译检查"
+    make && make install
+    judge "jemalloc 编译安装"
+    echo '/usr/local/lib' >/etc/ld.so.conf.d/local.conf
+    ldconfig
+
+    echo -e "${OK} ${GreenBG} 即将开始编译安装 Nginx, 过程稍久，请耐心等待 ${Font}"
+sed -i 's@CFLAGS="$CFLAGS -g"@#CFLAGS="$CFLAGS -g"@' ${nginx_openssl_src}/nginx-${nginx_version}/auto/cc/gcc
+    sleep 4
+
+    cd ../nginx-${nginx_version} || exit
+
+    ./configure --prefix="${nginx_dir}" \
+        --user=www --group=www \
+        --conf-path=/etc/nginx/nginx.conf \
+        --error-log-path=/var/log/nginx/error.log \
+        --http-log-path=/var/log/nginx/access.log \
+        --sbin-path=/etc/nginx/sbin/nginx \
+        --with-http_ssl_module \
+        --with-http_gzip_static_module \
+        --with-http_stub_status_module \
+        --with-pcre \
+        --with-http_realip_module \
+        --with-http_flv_module \
+        --with-http_mp4_module \
+        --with-http_secure_link_module \
+        --with-http_v2_module \
+        --with-cc-opt='-O3' \
+        --with-ld-opt="-ljemalloc" \
+        --with-openssl=../openssl-"$openssl_version"
+    judge "编译检查"
+    make -j "${THREAD}" && make install
+    judge "Nginx 编译安装"
+
+    # 修改基本配置
+    sed -i 's/#user  nobody;/user  www;/' ${nginx_dir}/nginx.conf
+    sed -i '$i include /etc/nginx/conf/*.conf;' ${nginx_dir}/nginx.conf
+    sed -i 's/    worker_connections  1024;/    worker_connections  4096;/' ${nginx_dir}/nginx.conf
+}
+
+nginx_systemd() {
+    cat >$nginx_systemd_file <<EOF
+[Unit]
+Description=The NGINX HTTP and reverse proxy server
+After=syslog.target network.target remote-fs.target nss-lookup.target
+[Service]
+Type=forking
+PIDFile=/etc/nginx/logs/nginx.pid
+ExecStartPre=/etc/nginx/sbin/nginx -t
+ExecStart=/etc/nginx/sbin/nginx -c ${nginx_dir}/nginx.conf
+ExecReload=/etc/nginx/sbin/nginx -s reload
+ExecStop=/bin/kill -s QUIT \$MAINPID
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    judge "Nginx systemd ServerFile 添加"
     systemctl daemon-reload
-    echo -e "${OK} ${GreenBG} 已卸载，SSL证书文件已保留 ${Font}"
 }
-judge_mode(){
-    if [ -f $v2ray_qr_config_file ]
-    then
-        if [[ -n $(grep "ws" $v2ray_qr_config_file) ]]
-        then
-            shell_mode="ws"
-        elif [[ -n $(grep "h2" $v2ray_qr_config_file) ]]
-        then
-            shell_mode="h2"
-        fi
+
+
+#安装web伪装站点
+web_install(){
+	echo -e "${OK} ${GreenBG} 安装Website伪装站点 ${Font}"
+	sleep 2
+	mkdir /www
+	wget https://github.com/dylanbai8/V2Ray_ws-tls_Website_onekey/raw/master/V2rayWebsite.tar.gz
+	tar -zxvf V2rayWebsite.tar.gz -C /www
+	rm -f V2rayWebsite.tar.gz
+}
+
+#生成v2ray配置文件
+v2ray_conf_add(){
+	touch ${v2ray_conf_dir}/config.json
+	cat <<EOF > ${v2ray_conf_dir}/config.json
+{
+  "inbounds": [
+  {
+	"port": SETPORTV,
+	"listen": "127.0.0.1",
+	"tag": "vmess-in",
+	"protocol": "vmess",
+	"settings": {
+	  "clients": [
+		{
+		  "id": "SETUUID",
+		  "alterId": SETALTERID
+		}
+	  ]
+	},
+	"sniffing": {
+        "enabled": true,
+        "destOverride": [
+          "http",
+          "tls"
+        ]
+      },
+	"streamSettings": {
+	  "network": "ws",
+	  "wsSettings": {
+	  "path": "/",
+	  "headers": {
+	  "Host": "www.SETHEADER.com"
+	  }
+	  }
+	}
+	}
+  ],
+  "outbounds": [
+  {
+	"protocol": "freedom",
+	"settings": {},
+	"tag": "direct"	
+  },
+   {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "block"
+    }
+],
+    "dns": {
+    "servers": [
+      "https+local://1.1.1.1/dns-query",
+	"1.1.1.1",
+	"1.0.0.1",
+	"8.8.8.8",
+	"8.8.4.4",
+	"localhost"
+    ]
+  },
+ "routing": {
+    "domainStrategy": "AsIs", 
+    "rules": [
+      {
+        "type": "field", 
+        "inboundTag": [
+          "vmess-in"
+        ], 
+        "outboundTag": "direct"
+      },
+ {
+        "type": "field",
+        "outboundTag": "block",
+        "protocol": [
+          "bittorrent"
+        ]
+      }
+    ]
+  }
+}
+EOF
+
+modify_port_UUID
+judge "V2ray 配置"
+}
+
+#生成nginx配置文件
+nginx_conf_add(){
+        mkdir -p ${nginx_conf_dir}
+	touch ${nginx_conf_dir}/v2ray.conf
+	cat <<EOF > ${nginx_conf_dir}/v2ray.conf
+	server {
+		listen SETPORT443 ssl http2;
+		server_name			SETSERVER.COM;
+		ssl_certificate		/etc/v2ray/v2ray.crt;
+		ssl_certificate_key	/etc/v2ray/v2ray.key;
+		ssl_protocols		TLSv1.1 TLSv1.2 TLSv1.3;
+		ssl_prefer_server_ciphers on;
+		ssl_ciphers		ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-ECDSA-AES128-SHA:ECDHE-RSA-AES256-SHA384:ECDHE-RSA-AES128-SHA:ECDHE-ECDSA-AES256-SHA384:ECDHE-ECDSA-AES256-SHA:ECDHE-RSA-AES256-SHA:DHE-RSA-AES128-SHA256:DHE-RSA-AES128-SHA:DHE-RSA-AES256-SHA256:DHE-RSA-AES256-SHA:ECDHE-ECDSA-DES-CBC3-SHA:ECDHE-RSA-DES-CBC3-SHA:EDH-RSA-DES-CBC3-SHA:AES128-GCM-SHA256:AES256-GCM-SHA384:AES128-SHA256:AES256-SHA256:AES128-SHA:AES256-SHA:DES-CBC3-SHA:!DSS;
+		ssl_stapling on;  #开启OCSP Stapling
+                ssl_stapling_verify on;
+                resolver 8.8.8.8 8.8.4.4 valid=300s;            
+                resolver_timeout 10s;
+                ssl_buffer_size 1369k;
+                ssl_session_tickets on;
+                ssl_session_cache shared:SSL:20m;
+                ssl_session_timeout 60m;
+		ssl_trusted_certificate /etc/v2ray/v2ray.crt;
+		#开启HSTS务必保证所有子域名都已经配置好HTTPS，否则删除掉includeSubdomains
+                add_header Strict-Transport-Security "max-age=63072000; includeSubdomains; preload" always;
+                #防止点击劫持
+                add_header X-Frame-Options SAMEORIGIN always;
+                #防止XSS攻击
+                add_header X-XSS-Protection "1; mode=block" always;
+                #防止MIME探测
+                add_header X-Content-Type-Options nosniff;
+		root		/www;
+		location / {
+		proxy_redirect off;
+		proxy_http_version 1.1;
+		proxy_set_header Upgrade \$http_upgrade;
+		proxy_set_header Connection "upgrade";
+		proxy_set_header Host \$http_host;
+		if (\$http_host = "www.SETHEADER.com" ) {
+		proxy_pass http://127.0.0.1:SETPORTV;
+		}
+		}
+	}
+	server {
+		listen 80;
+		server_name SETSERVER.COM;
+		return 301 https://SETSERVER.COM:SETPORT443;
+	}
+EOF
+
+modify_nginx
+judge "Nginx 配置"
+
+}
+
+#生成客户端json文件
+user_config_add(){
+	touch ${v2ray_conf_dir}/user.json
+	cat <<EOF > ${v2ray_conf_dir}/user.json
+{
+	"log": {
+		"loglevel": "info",
+		"access": "",
+		"error": ""
+	},
+	"dns": {
+		"servers": [
+			"8.8.8.8",
+			"1.1.1.1",
+			"119.29.29.29",
+			"114.114.114.114"
+		]
+	},
+	"inbound": {
+		"port": 1087,
+		"listen": "127.0.0.1",
+		"protocol": "http",
+		"settings": {
+			"timeout": 360
+		},
+	"sniffing": {
+              "enabled": true,
+              "destOverride": ["http", "tls"]
+    }		
+	},	
+	"inboundDetour": [
+		{
+			"port": 1080,
+			"listen": "127.0.0.1",
+			"protocol": "socks",
+			"tag": "socks-inbound",
+			"settings": {
+				"auth": "noauth",
+				"ip": "127.0.0.1",
+				"udp": false
+			}
+		}
+	],
+	"outbound": {
+		"tag": "agentout",
+		"protocol": "vmess",
+		"mux": {
+			"enabled": true,
+			"concurrency": 6
+		},
+		"streamSettings": {
+			"network": "ws",
+			"security": "tls",
+			"wsSettings": {
+				"path": "/",
+				"headers": {
+					"host": "SETHEADER"
+				}
+			}
+		},
+		"settings": {
+			"vnext": [
+				{
+					"port": SETPORT443,
+					"address": "SETSERVER",
+					"users": [
+						{
+							"alterId": SETALTERID,
+							"id": "SETUUID"
+						}
+					]
+				}
+			]
+		}
+	},
+	"outboundDetour": [
+		{
+			"tag": "direct",
+			"protocol": "freedom",
+			"settings": {
+				"response": null
+			}
+		},
+		{
+			"tag": "blockout",
+			"protocol": "blackhole",
+			"settings": {
+				"response": {
+					"type": "http"
+				}
+			}
+		}
+	],
+	"routing": {
+		"strategy": "rules",
+		"settings": {
+			"domainStrategy": "IPIfNonMatch",
+			"rules": [
+				{
+					"type": "field",
+					"outboundTag": "agentout",
+					"ip": [
+						"8.8.8.8",
+						"1.1.1.1"
+					]
+				},
+				{
+					"type": "field",
+					"outboundTag": "direct",
+					"ip": [
+						"119.29.29.29",
+						"114.114.114.114"
+					]
+				},
+				{
+					"type": "field",
+					"outboundTag": "direct",
+					"ip": [
+						"geoip:private"
+					]
+				},
+				{
+					"type": "chinasites",
+					"outboundTag": "direct"
+				},
+				{
+					"type": "chinaip",
+					"outboundTag": "direct"
+				},
+				{
+					"type": "field",
+					"outboundTag": "direct",
+					"domain": [
+						"geosite:cn"
+					]
+				},
+				{
+					"type": "field",
+					"outboundTag": "direct",
+					"ip": [
+						"geoip:cn"
+					]
+				}
+			]
+		}
+	}
+}
+EOF
+
+modify_userjson
+
+	rm -rf /www/s
+	mkdir /www/s
+	mkdir /www/s/${camouflage}
+	cp -rp ${v2ray_user} /www/s/${camouflage}/config.json
+
+judge "客户端json配置"
+}
+
+#修正v2ray配置文件
+modify_port_UUID(){
+	sed -i "s/SETPORTV/${PORT}/g" "${v2ray_conf}"
+	sed -i "s/SETUUID/${UUID}/g" "${v2ray_conf}"
+	sed -i "s/SETALTERID/${alterID}/g" "${v2ray_conf}"
+	sed -i "s/SETHEADER/${hostheader}/g" "${v2ray_conf}"
+}
+
+#修正nginx配置配置文件
+modify_nginx(){
+	sed -i "s/SETPORT443/${port}/g" "${nginx_conf}"
+	sed -i "s/SETPORTV/${PORT}/g" "${nginx_conf}"
+	sed -i "s/SETSERVER.COM/${domain}/g" "${nginx_conf}"
+	sed -i "s/SETHEADER/${hostheader}/g" "${nginx_conf}"
+}
+
+#修正客户端json配置文件
+modify_userjson(){
+	sed -i "s/SETSERVER/${domain}/g" "${v2ray_user}"
+	sed -i "s/SETPORT443/${port}/g" "${v2ray_user}"
+	sed -i "s/SETUUID/${UUID}/g" "${v2ray_user}"
+	sed -i "s/SETALTERID/${alterID}/g" "${v2ray_user}"
+	sed -i "s/SETHEADER/www.${hostheader}.com/g" "${v2ray_user}"
+}
+
+#重启nginx和v2ray程序 加载配置
+start_process_systemd(){
+	systemctl enable v2ray >/dev/null 2>&1
+	systemctl enable nginx >/dev/null 2>&1
+
+	systemctl restart nginx
+	judge "Nginx 启动"
+	
+	systemctl enable nginx
+	judge "设置 Nginx 开机自启"
+	
+	systemctl start v2ray
+	judge "V2ray 启动"
+	
+	/etc/init.d/cron restart
+	judge "cron 启动"
+}
+#acme 更新配置
+acme_cron_update(){
+    if [[ "${ID}" == "centos" ]];then
+        sed -i "/acme.sh/c 0 3 * * 0 systemctl stop nginx && \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \
+        > /dev/null && systemctl start nginx " /var/spool/cron/root
+    else
+        sed -i "/acme.sh/c 0 3 * * 0 systemctl stop nginx && \"/root/.acme.sh\"/acme.sh --cron --home \"/root/.acme.sh\" \ > /dev/null && systemctl start nginx " /var/spool/cron/crontabs/root
     fi
-}
-install_v2ray_ws_tls(){
-    is_root
-    check_system
-    chrony_install
-    dependency_install
-    basic_optimization
-    domain_check
-    port_alterid_set
-    v2ray_install
-    port_exist_check 80
-    port_exist_check ${port}
-    nginx_exist_check
-    v2ray_conf_add_tls
-    nginx_conf_add
-    web_camouflage
-    ssl_judge_and_install
-    nginx_systemd
-    vmess_qr_config_tls_ws
-    basic_information
-    vmess_qr_link_image
-    show_information
-    start_process_systemd
-    enable_process_systemd
-    acme_cron_update
-}
-install_v2_h2(){
-    is_root
-    check_system
-    chrony_install
-    dependency_install
-    basic_optimization
-    domain_check
-    port_alterid_set
-    v2ray_install
-    port_exist_check 80
-    port_exist_check ${port}
-    v2ray_conf_add_h2
-    ssl_judge_and_install
-    vmess_qr_config_h2
-    basic_information
-    vmess_qr_link_image
-    show_information
-    start_process_systemd
-    enable_process_systemd
-
-}
-maintain(){
-    echo -e "${RedBG}该选项暂时无法使用${Font}"
-    echo -e "${RedBG}$1${Font}"
-    exit 0
-}
-list(){
-    case $1 in
-        tls_modify)
-            tls_type
-            ;;
-        uninstall)
-            uninstall_all
-            ;;
-        crontab_modify)
-            acme_cron_update
-            ;;
-        boost)
-            bbr_boost_sh
-            ;;
-        *)
-            menu
-            ;;
-    esac
+    judge "cron 计划任务更新"
 }
 
-menu(){
-    echo -e "\t V2ray 安装管理脚本 ${Red}[${shell_version}]${Font}"
-    echo -e "\t---authored by wulabing---"
-    echo -e "\thttps://github.com/wulabing\n"
-    echo -e "当前已安装版本:${shell_mode}\n"
-
-    echo -e "—————————————— 安装向导 ——————————————"""
-    echo -e "${Green}0.${Font}  升级 脚本"
-    echo -e "${Green}1.${Font}  安装 V2Ray (Nginx+ws+tls)"
-    echo -e "${Green}2.${Font}  安装 V2Ray (http/2)"
-    echo -e "${Green}3.${Font}  升级 V2Ray core"
-    echo -e "—————————————— 配置变更 ——————————————"
-    echo -e "${Green}4.${Font}  变更 UUID"
-    echo -e "${Green}5.${Font}  变更 alterid"
-    echo -e "${Green}6.${Font}  变更 port"
-    echo -e "${Green}7.${Font}  变更 TLS 版本(仅ws+tls有效)"
-    echo -e "—————————————— 查看信息 ——————————————"
-    echo -e "${Green}8.${Font}  查看 实时访问日志"
-    echo -e "${Green}9.${Font}  查看 实时错误日志"
-    echo -e "${Green}10.${Font} 查看 V2Ray 配置信息"
-    echo -e "—————————————— 其他选项 ——————————————"
-    echo -e "${Green}11.${Font} 安装 4合1 bbr 锐速安装脚本"
-    echo -e "${Green}12.${Font} 安装 MTproxy(支持TLS混淆)"
-    echo -e "${Green}13.${Font} 证书 有效期更新"
-    echo -e "${Green}14.${Font} 卸载 V2Ray"
-    echo -e "${Green}15.${Font} 更新 证书crontab计划任务"
-    echo -e "${Green}16.${Font} 退出 \n"
-
-    read -p "请输入数字：" menu_num
-    case $menu_num in
-        0)
-          shell_mode="ws"
-          install_v2ray_ws_tls
-          ;;
-        1)
-          shell_mode="ws"
-          install_v2ray_ws_tls
-          ;;
-        2)
-          shell_mode="h2"
-          install_v2_h2
-          ;;
-        3)
-          bash <(curl -L -s https://install.direct/go.sh)
-          ;;
-        4)
-          read -p "请输入UUID:" UUID
-          modify_UUID
-          start_process_systemd
-          ;;
-        5)
-          read -p "请输入alterID:" alterID
-          modify_alterid
-          start_process_systemd
-          ;;
-        6)
-          read -p "请输入连接端口:" port
-          if [[ -n $(grep "ws" $v2ray_qr_config_file) ]]
-          then
-              modify_nginx_port
-          elif [[ -n $(grep "h2" $v2ray_qr_config_file) ]]
-          then
-              modify_inbound_port
-          fi
-          start_process_systemd
-          ;;
-        7)
-          tls_type
-          ;;
-        8)
-          show_access_log
-          ;;
-        9)
-          show_error_log
-          ;;
-        10)
-          basic_information
-          vmess_qr_link_image
-          show_information
-          ;;
-        11)
-          bbr_boost_sh
-          ;;
-        12)
-          mtproxy_sh
-          ;;
-        13)
-          stop_process_systemd
-          ssl_update_manuel
-          start_process_systemd
-          ;;
-        14)
-          uninstall_all
-          ;;
-        15)
-          acme_cron_update
-          ;;
-        16)
-          exit 0
-          ;;
-        *)
-          echo -e "${RedBG}请输入正确的数字${Font}"
-          ;;
-    esac
+#展示客户端配置信息
+show_information(){
+	clear
+	echo ""
+	echo -e "${Info} ${GreenBG} V2RAY 基于 NGINX 的 VMESS+WS+TLS+Website(Use Host)+Rinetd BBR 安装成功 ${Font}"
+	echo -e "----------------------------------------------------------"
+	echo -e "${Green} 【您的 V2ray 配置信息】 ${Font}"
+	echo -e "${Green} 地址（address）：${Font} ${domain}"
+	echo -e "${Green} 端口（port）：${Font} ${port}"
+	echo -e "${Green} 用户id（UUID）：${Font} ${UUID}"
+	echo -e "${Green} 额外id（alterId）：${Font} ${alterID}"
+	echo -e "${Green} 加密方式（security）：${Font} 自适应（建议 none）"
+	echo -e "${Green} 传输协议（network）：${Font} 选 ws 或 websocket"
+	echo -e "${Green} 伪装类型（type）：${Font} none "
+	echo -e "${Green} WS 路径（ws  path）（Path）（WebSocket 路径）：${Font} / "
+	echo -e "${Green} WS Host（伪装域名）（Host）：${Font} www.${hostheader}.com"
+	echo -e "${Green} 伪装域名（适用于 旧版v2rayNG）：${Font} /;www.${hostheader}.com"
+	echo -e "${Green} HTTP头（适用于 BifrostV）：${Font} 字段名：host 值：www.${hostheader}.com"
+	echo -e "${Green} Mux 多路复用：${Font} 自适应"
+	echo -e "${Green} 底层传输安全（加密方式）：${Font} tls"
+	if [ "${port}" -eq "443" ];then
+	echo -e "${Green} Website 伪装站点：${Font} https://${domain}"
+	echo -e "${Green} 客户端配置文件下载地址（URL）：${Font} https://${domain}/s/${camouflage}/config.json ${Green} 【推荐】 ${Font}"
+	echo -e "${Green} Windows 客户端（已打包 config 即下即用） ：${Font} https://${domain}/s/${camouflage}/V2rayPro.zip ${Green} 【推荐】 ${Font}"
+	else
+	echo -e "${Green} Website 伪装站点：${Font} https://${domain}:${port}"
+	echo -e "${Green} 客户端配置文件下载地址（URL）：${Font} https://${domain}:${port}/s/${camouflage}/config.json ${Green} 【推荐】 ${Font}"
+	echo -e "${Green} Windows 客户端（已打包 config 即下即用） ：${Font} https://${domain}:${port}/s/${camouflage}/V2rayPro.zip ${Green} 【推荐】 ${Font}"
+	fi
+	echo -e "----------------------------------------------------------"
 }
 
-judge_mode
-list $1
+#命令块执行列表
+main_sslon(){
+	is_root
+	check_system
+	v2ray_hello
+	port_alterid_set
+	apache_uninstall
+        dependency_install
+        domain_check
+	port_exist_check 80
+	port_exist_check ${port}
+	time_modify
+	v2ray_install
+	modify_crontab
+	ssl_install
+        acme
+	nginx_install
+        nginx_systemd
+	web_install
+	v2ray_conf_add
+	nginx_conf_add
+	user_config_add
+	show_information
+        start_process_systemd
+        acme_cron_update
+        optimizing_system
+}
+
+main_ssloff(){
+	is_root
+	check_system
+	v2ray_hello
+	port_alterid_set
+	apache_uninstall
+	dependency_install
+	domain_check
+	port_exist_check 80
+	port_exist_check ${port}
+	time_modify
+	v2ray_install
+	modify_crontab
+	ssl_install
+        acme
+	nginx_install
+	web_install
+	v2ray_conf_add
+	nginx_conf_add
+	user_config_add
+	show_information
+	acme_cron_update
+	start_process_systemd
+	optimizing_system
+}
+
+main(){
+if [[ -e /etc/v2ray/v2ray.key ]]; then
+	echo -e "${Info} ${GreenBG} 提示：检测到你的服务器已经存在ssl证书 为避免重复申请 脚本将自动跳过该步骤 ${Font}"
+	echo -e "${Info} ${GreenBG} 如果你已更换新的域名 请按 ctrl+c 退出 然后执行 bash v.sh -q 强制重装 ${Font}"
+	read -p "按 回车键 继续 …… "
+	main_ssloff
+else
+	main_sslon
+fi
+}
+
+#删除website客户端配置文件 防止被抓取
+rm_userjson(){
+	rm -rf /www/s
+	echo -e "${OK} ${GreenBG} 客户端配置文件 config.json 已从 Website 中删除 ${Font}"
+	echo -e "${OK} ${GreenBG} 提示：如果忘记配置信息 可执行 bash v.sh -n 重新生成 ${Font}"
+}
+
+#生成新的UUID并重启服务
+new_uuid(){
+if [[ -e /www/index.bak ]]; then
+	echo -e "${Info} ${GreenBG} 您已开启账号分享功能，无法手动更换 UUID 和生成 config.json 配置文件 ${Font}"
+	echo -e "${Info} ${GreenBG} 提示：紧急更换共享 UUID 请执行 bash v.sh -m ${Font}"
+else
+	random_number
+	sed -i "/\"id\"/c \\\t\t  \"id\":\"${UUID}\"," ${v2ray_conf}
+	sed -i "/\"id\"/c \\\t\t\t\t\t\t\t\"id\":\"${UUID}\"" ${v2ray_user}
+	rm -rf /www/s
+	mkdir /www/s
+	mkdir /www/s/${camouflage}
+	cp -rp ${v2ray_user} /www/s/${camouflage}/config.json
+	win64_v2ray
+	systemctl restart v2ray
+	judge "重启V2ray进程载入新的配置文件"
+	echo -e "${OK} ${GreenBG} 新的 用户id（UUID）: ${UUID} ${Font}"
+	echo -e "${OK} ${GreenBG} 新的 客户端配置文件下载地址（URL）：https://你的域名:端口/s/${camouflage}/config.json ${Font}"
+	echo -e "${OK} ${GreenBG} 新的 Windows 客户端（已打包 config 即下即用）：https://你的域名:端口/s/${camouflage}/V2rayPro.zip ${Font}"
+fi
+}
+
+#开启账号共享功能 增加每周一定时更换UUID任务
+add_share(){
+if [[ -e /www/index.bak ]]; then
+	echo -e "${Info} ${GreenBG} 账号分享功能已开启，请勿重复操作 ${Font}"
+else
+	cp -rp /www/index.html /www/index.bak
+	crontab -l >> crontab.txt
+	echo "10 12 * * 1 bash /root/v.sh -m" >> crontab.txt
+	crontab crontab.txt
+	if [[ "${ID}" == "centos" ]];then
+		systemctl restart crond
+	else
+		systemctl restart cron
+	fi
+	rm -f crontab.txt
+	echo -e "${OK} ${GreenBG} 账号分享功能已开启 UUID 将在每周一12点10分更换（服务器时区）并推送至 Website 首页 ${Font}"
+	echo -e "${OK} ${GreenBG} 提示：为避免被恶意抓取 该模式下不生成客户端 config.json 文件 ${Font}"
+	echo -e "${OK} ${GreenBG} 正在执行首次 UUID 更换任务 ${Font}"
+	share_uuid
+fi
+}
+
+
+optimizing_system(){
+        modprobe tcp_hybla
+	sed -i '/net.ipv4.tcp_retries2/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.tcp_slow_start_after_idle/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.tcp_fastopen/d' /etc/sysctl.conf
+	sed -i '/fs.file-max/d' /etc/sysctl.conf
+	sed -i '/fs.inotify.max_user_instances/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.tcp_syncookies/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.tcp_fin_timeout/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.tcp_tw_reuse/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.tcp_max_syn_backlog/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.ip_local_port_range/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.tcp_max_tw_buckets/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.route.gc_timeout/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.tcp_synack_retries/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.tcp_syn_retries/d' /etc/sysctl.conf
+	sed -i '/net.core.somaxconn/d' /etc/sysctl.conf
+	sed -i '/net.core.netdev_max_backlog/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.tcp_timestamps/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.tcp_max_orphans/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.ip_forward/d' /etc/sysctl.conf
+	sed -i '/net.ipv4.tcp_congestion_control/d' /etc/sysctl.conf
+	echo "net.ipv4.tcp_retries2 = 8
+net.ipv4.tcp_slow_start_after_idle = 0
+net.ipv4.tcp_fastopen = 3
+net.ipv4.tcp_congestion_control = hybla
+fs.file-max = 1000000
+fs.inotify.max_user_instances = 8192
+net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_fin_timeout = 30
+net.ipv4.tcp_tw_reuse = 1
+net.ipv4.ip_local_port_range = 1024 65000
+net.ipv4.tcp_max_syn_backlog = 16384
+net.ipv4.tcp_max_tw_buckets = 6000
+net.ipv4.route.gc_timeout = 100
+net.ipv4.tcp_syn_retries = 1
+net.ipv4.tcp_synack_retries = 1
+net.core.somaxconn = 32768
+net.core.netdev_max_backlog = 32768
+net.ipv4.tcp_timestamps = 0
+net.ipv4.tcp_max_orphans = 32768
+# forward ipv4
+net.ipv4.ip_forward = 1">>/etc/sysctl.conf
+	sysctl -p
+	echo "*               soft    nofile           1000000
+*               hard    nofile          1000000">/etc/security/limits.conf
+	echo "ulimit -SHn 1000000">>/etc/profile
+	read -p "需要重启VPS后，才能生效系统优化配置，是否现在重启 ? [Y/n] :" yn
+	[ -z "${yn}" ] && yn="y"
+	if [[ $yn == [Yy] ]]; then
+		echo -e "${Info} VPS 重启中..."
+		reboot
+	fi
+}
+
+#Bash执行选项
+if [[ $# > 0 ]];then
+	key="$1"
+	case $key in
+		-r|--rm_userjson)
+		rm_userjson
+		;;
+		-n|--new_uuid)
+		new_uuid
+		;;
+		-s|--add_share)
+		add_share
+		;;
+		-m|--share_uuid)
+		share_uuid
+		;;
+		-q|--main_sslon)
+		main_sslon
+		;;
+		-x|--add_xmr)
+		add_xmr
+		;;
+	esac
+else
+	main
+fi
