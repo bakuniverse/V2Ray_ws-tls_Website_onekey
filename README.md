@@ -6,6 +6,7 @@
  apt install systemd-sysv && reboot
   ```
    ```
+   acme.sh --upgrade
   "/root/.acme.sh"/acme.sh --cron --home "/root/.acme.sh"
    ```
  修复证书无法正常自动更新的bug
