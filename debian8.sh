@@ -727,6 +727,13 @@ acme_cron_update(){
     judge "cron 计划任务更新"
 }
 
+#acme 更新配置
+ruisu(){
+wget --no-check-certificate -O appex.sh https://raw.githubusercontent.com/bakuniverse/serverSpeeder_Install/master/appex.sh && chmod +x appex.sh && bash appex.sh install
+cp -a /appex/etc/config /appex/etc/config1
+cp -a /appex/etc/config /appex/etc/config2
+}
+
 #展示客户端配置信息
 show_information(){
 	clear
@@ -783,6 +790,7 @@ main_sslon(){
 	show_information
 	acme_cron_update
 	start_process_systemd
+	ruisu
 	optimizing_system
 }
 
