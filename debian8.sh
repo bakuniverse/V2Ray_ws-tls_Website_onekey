@@ -209,7 +209,7 @@ dependency_install(){
 domain_check(){
 	domain_ip=`ping ${domain} -c 1 | sed '1{s/[^(]*(//;s/).*//;q}'`
 	echo -e "${OK} ${GreenBG} 正在获取 公网ip 信息，请耐心等待 ${Font}"
-	local_ip=`curl -4 ip.sb`
+	local_ip=`curl https://api-ipv4.ip.sb/ip`
 	echo -e "${OK} ${GreenBG} 域名dns解析IP：${domain_ip} ${Font}"
 	echo -e "${OK} ${GreenBG} 本机IP: ${local_ip} ${Font}"
 	sleep 2
