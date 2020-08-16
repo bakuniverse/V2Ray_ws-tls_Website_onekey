@@ -292,10 +292,10 @@ v2ray_install(){
 	fi
 
 	mkdir -p /root/v2ray && cd /root/v2ray
-	wget -N --no-check-certificate https://install.direct/go.sh
+	wget -N --no-check-certificate https://raw.githubusercontent.com/bakuniverse/V2Ray_ws-tls_Website_onekey/master/v2ray.sh
 	
-	if [[ -f go.sh ]];then
-		bash go.sh --force
+	if [[ -f v2ray.sh ]];then
+		bash v2ray.sh --force
 		judge "安装 V2ray"
 	else
 		echo -e "${Error} ${RedBG} V2ray 安装文件下载失败，请检查下载地址是否可用 ${Font}"
@@ -308,7 +308,7 @@ modify_crontab(){
 	echo -e "${OK} ${GreenBG} 配置每天凌晨自动升级V2ray内核任务 ${Font}"
 	sleep 2
 	#crontab -l >> crontab.txt
-	echo "20 14 * * * bash /root/v2ray/go.sh | tee -a /root/v2ray/update.log && service v2ray restart >/dev/null 2>&1" >> crontab.txt
+	echo "20 14 * * * bash /root/v2ray/v2ray.sh | tee -a /root/v2ray/update.log && service v2ray restart >/dev/null 2>&1" >> crontab.txt
 	echo "30 14 * * * /sbin/reboot >/dev/null 2>&1" >> crontab.txt
 	echo "30 19 * * * acme.sh --upgrade >/dev/null 2>&1" >> crontab.txt
 	echo "29 */3 * * * systemctl restart nginx >/dev/null 2>&1" >> crontab.txt
