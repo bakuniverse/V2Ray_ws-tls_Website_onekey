@@ -643,7 +643,7 @@ user_config_add(){
 			"network": "ws",
 			"security": "tls",
 			"wsSettings": {
-				"path": "/SETHEADER/",
+				"path": "/SETHEADER/"
 			}
 		},
 		"settings": {
@@ -767,7 +767,7 @@ modify_userjson(){
 	sed -i "s/SETPORT443/${port}/g" "${v2ray_user}"
 	sed -i "s/SETUUID/${UUID}/g" "${v2ray_user}"
 	sed -i "s/SETALTERID/${alterID}/g" "${v2ray_user}"
-	sed -i "s/SETHEADER/www.${hostheader}.com/g" "${v2ray_user}"
+	sed -i "s/SETHEADER/${hostheader}/g" "${v2ray_user}"
 }
 
 #重启nginx和v2ray程序 加载配置
