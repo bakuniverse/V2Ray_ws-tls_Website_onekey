@@ -3,10 +3,10 @@
 
 nginx_install(){
 	if [[ -d /dev/shm/default.sock ]];then
-		rm -rf /dev/shm/default.sock
-    rm -rf /dev/shm/h2c.sock
+	        rm -rf /dev/shm/default.sock
+                rm -rf /dev/shm/h2c.sock
 		sleep 2
-    reboot
+                reboot
 	else
 		echo -e "${Error} ${RedBG} nginx 安装失败 ${Font}"
 		exit 5
