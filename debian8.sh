@@ -340,6 +340,7 @@ ssl_install(){
 
 #生成ssl证书
 acme(){
+~/.acme.sh/acme.sh --set-default-ca --server letsencrypt
 	~/.acme.sh/acme.sh --issue -d ${domain} --standalone -k ec-256 --force
 	if [[ $? -eq 0 ]];then
 		echo -e "${OK} ${GreenBG} SSL 证书生成成功 ${Font}"
